@@ -1,48 +1,16 @@
-#include<map>
-#include<string>
+#include"parse.h"
 #include<cctype>
-#include<vector>
-using namespace std;
 
-struct Token{
-	Token(int type,int line,int pos):
-		type(type),line(line),pos(pos),start(nullptr){}
-	Token(int type,int line,int pos,char c):
-		type(type),line(line),pos(pos),start(nullptr),content(c){}
-	Token(int type,int line,int pos):
-		type(type),line(line),pos(pos){}
-	void set_str(const char* start,const char* end){
-		content.assign(start,end,end-start+1);
-	}
-	int type;
-	int line;
-	int pos;
-	string content;
-};
-enum STAGE{
-	IDLE=0,
-	MACRO,
-	ID,
-	NUMBER_INTEGER,NUMBER_DOT_SIGN,NUMBER_DECIMAL,NUMBER_EXP_SYMBOL,NUMBER_EXP_SIGN,NUMBER_EXP, // 处理数字
-	SLASH_COMMENT,SLASH_COMMENT_CONTENT, // 处理注释
-	
-};
-enum TOKEN_TYPE{
-	TOKEN_MACRO,
-	TOKEN_IDENTITY,
-	TOKEN_KEYWORD,
-	TOKEN_NUMBER,
-	TOKEN_COMMENT,
-	TOKEN_ASSIGN,
-};
-inline void set_str(vector<Token>& result,std::string::iterator& a,std::string::iterator &b){
+
+
+inline void set_str(vector<Token>& result,const std::string::const_iterator & a,const std::string::const_iterator &b){
 	result[result.size()-1].set_str(a,b);
 }
-void parse(string &code,vector<Token>& result){
+void parse(const string &code,vector<Token>& result){
 	auto iter = code.begin();
 	auto last_IDLE_pointer = code.begin();
 	auto state = IDLE;
-	auto line =0,pos=0;
+	auto line =1,pos=1;
 	bool check_again = false;
 	while(iter!=code.end()){
 		auto& ch = *iter;
@@ -58,12 +26,17 @@ void parse(string &code,vector<Token>& result){
 			}else if(isdigit(ch)){
 				state = NUMBER_INTEGER;
 				result.push_back(Token{TOKEN_NUMBER,line,pos});
-			}else if(ch=='=' && iter!=code.end() && *(iter+1)!='=' ){
+			}else if(ch=='=' && (iter+1)!=code.end() && *(iter+1)!='=' ){
 				// 不需要改变状态
-				result.push_back(Token{TOKEN_ASSIGN,line,pos});
+				result.push_back(Token{TOKEN_ASSIGN,line,pos,'='});
 			}else if(ch=='/'){
-				state = SLASH_COMMENT;
-				result.push_back(Token{TOKEN_COMMENT,line,pos});
+				if( (iter+1)!=code.end() && *(iter+1)=='/' ){
+					state = SLASH_COMMENT;
+					result.push_back(Token{TOKEN_COMMENT,line,pos});
+				}else{
+					state = ASTERISK_COMMENT;
+					result.push_back(Token{TOKEN_COMMENT,line,pos});
+				}
 			}else{
 				// can't detect;do nothing
 			}
@@ -88,9 +61,9 @@ void parse(string &code,vector<Token>& result){
 
 		case NUMBER_INTEGER:    // 数字整数
 			if(isdigit(ch)){
-				state = NUMBER_INTEGER
+				state = NUMBER_INTEGER;
 			}else if(ch=='E' || ch =='e'){
-				state = NUMBER_EXP_SYMBOL
+				state = NUMBER_EXP_SYMBOL;
 			}else if(ch=='.'){
 				state = NUMBER_DOT_SIGN;
 			}else{
@@ -110,7 +83,7 @@ void parse(string &code,vector<Token>& result){
 
 		case NUMBER_DECIMAL:  // 数字分数
 			if(ch=='E'||ch == 'e'){
-				state = NUMBER_EXP_SYMBOL
+				state = NUMBER_EXP_SYMBOL;
 			}else if(!isdigit(ch)){
 				state = IDLE;
 				set_str(result,last_IDLE_pointer,iter);
@@ -126,7 +99,12 @@ void parse(string &code,vector<Token>& result){
 				throw "error NUMBER_EXP_SYMBOL";
 			}
 			break;
-
+		case NUMBER_EXP_SIGN: // 数字指数部分的符号
+			if(isdigit(ch)){
+				state = NUMBER_EXP;
+			}else{
+				throw "NUMBER_EXP_SIGN";
+			}
 		case NUMBER_EXP:
 			if (isdigit(ch)){
 				state = NUMBER_EXP;
@@ -139,7 +117,7 @@ void parse(string &code,vector<Token>& result){
 		
 		case SLASH_COMMENT:
 			if (ch=='/'){
-				state = SLASH_COMMENT_CONTENT
+				state = SLASH_COMMENT_CONTENT;
 			}else{
 				throw "error SLASH_COMMENT";
 			}
@@ -150,13 +128,35 @@ void parse(string &code,vector<Token>& result){
 				set_str(result,last_IDLE_pointer,iter);
 				// 不需要重新检查\n
 			}
+			break;
+		case ASTERISK_COMMENT:
+			if(ch=='*')state=ASTERISK_COMMENT_BS1;
+			else throw "ASTERISK_COMMENT1";
+			break;
+
+		case ASTERISK_COMMENT_BS1:
+			if(ch=='*')state=ASTERISK_COMMENT_BS2;
+			else throw "ASTERISK_COMMENT2";
+			break;
+
+		case ASTERISK_COMMENT_BS2:
+			if(ch=='*')
+			state=ASTERISK_COMMENT_ESLASH;
+			break;
+		case ASTERISK_COMMENT_ESLASH:
+			if(ch=='/'){
+				state=IDLE;
+				set_str(result,last_IDLE_pointer,iter+1);
+			}
+			else state = ASTERISK_COMMENT_BS2;
+			break;
 		default:
 			throw "unknow state";
 			break;
 		}
 		if(!check_again){
 			if(ch=='\n'){
-				pos = 0;
+				pos = 1;
 				line+=1;
 			}else{
 				pos++;
@@ -170,6 +170,46 @@ void parse(string &code,vector<Token>& result){
 	}
 }
 
+ostream& operator <<(ostream& os,const Token& token){
+	if(!token.filename.empty()){
+		os<<token.filename<<":";
+	}
+	os<<token.line<<":"<<token.pos<<" "<<"type: ";
+	switch (token.type)
+	{
+	case TOKEN_MACRO:os<<"宏";break;
+	case TOKEN_IDENTITY:os<<"标识符";break;
+	case TOKEN_KEYWORD:os<<"关键字";break;
+	case TOKEN_NUMBER:os<<"数字";break;
+	case TOKEN_COMMENT:os<<"注释";break;
+	case TOKEN_ASSIGN:os<<"赋值";break;
+	default:os<<"未知";break;
+	}
+	os<<" content:"<<token.content<<"\n";
+	return os;
+}
+
+#include<fstream>
+#include<sstream>
+#include<algorithm>
+using namespace std;
+string Token::filename {};
 int main(){
+	ifstream fs("./test_data/numeric.c");
+	stringstream buf;
+	Token::filename.assign("./test_data/numeric.c");
+	if(fs.is_open()){
+		vector<Token> v;
+		buf << fs.rdbuf();
+		const string code { buf.str()};
+		parse(code,v);
+		sort(v.begin(),v.end());
+		for(auto &token:v){
+			cout<<token;
+		}
+	}else{
+		cout<<"No such file";
+		return -1;
+	}
 
 }
