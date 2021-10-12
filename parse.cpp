@@ -1,8 +1,10 @@
 #include"parse.h"
 #include<cctype>
+#include<array>
 
-
-
+inline void set_type(vector<Token>& result,int type){
+	result[result.size()-1].set_type(type);
+}
 inline void set_str(vector<Token>& result,const std::string::const_iterator & a,const std::string::const_iterator &b){
 	result[result.size()-1].set_str(a,b);
 }
@@ -11,7 +13,9 @@ void parse(const string &code,vector<Token>& result){
 	auto last_IDLE_pointer = code.begin();
 	auto state = IDLE;
 	auto line =1,pos=1;
-	bool check_again = false;
+	std::array<int, 32> ternary_op_stack = {};
+	auto ternary_op_sp = -1;
+
 	while(iter!=code.end()){
 		auto& ch = *iter;
 		switch (state)
@@ -26,19 +30,46 @@ void parse(const string &code,vector<Token>& result){
 			}else if(isdigit(ch)){
 				state = NUMBER_INTEGER;
 				result.push_back(Token{TOKEN_NUMBER,line,pos});
-			}else if(ch=='=' && (iter+1)!=code.end() && *(iter+1)!='=' ){
-				// 不需要改变状态
-				result.push_back(Token{TOKEN_ASSIGN,line,pos,'='});
 			}else if(ch=='/'){
 				if( (iter+1)!=code.end() && *(iter+1)=='/' ){
 					state = SLASH_COMMENT;
 					result.push_back(Token{TOKEN_COMMENT,line,pos});
-				}else{
+				}else if((iter+1)!=code.end() && *(iter+1)=='*'){
 					state = ASTERISK_COMMENT;
 					result.push_back(Token{TOKEN_COMMENT,line,pos});
+				}else{
+					//除法
+					state = OP;
+					result.push_back(Token{TOKEN_OP,line,pos});
 				}
+			}else if(ch=='.'){
+				state = IDLE;
+				result.push_back(Token{TOKEN_OP,line,pos,'.'});
+			}else if(ch =='=' || ch=='<' || ch =='>' || ch == '!' || ch =='|' || ch =='&' || ch =='^' || ch =='*' || ch=='%' || ch=='~'){
+				state = OP;
+				result.push_back(Token{TOKEN_OP,line,pos});
+			}else if(ch=='+' || ch=='-'){
+				state = PLUS_MINUS;
+				result.push_back(Token{TOKEN_OP,line,pos});
+			}else if(ch=='?'){
+				ternary_op_stack[ternary_op_sp++] = result.size();
+				result.push_back(Token{TOKEN_OP,line,pos});
+			}else if(ch == ':'){
+				ternary_op_sp--;
+			}else if(ch == '(' || ch ==')'){
+				state = IDLE;
+				result.push_back(Token{TOKEN_PARENTHESES,line,pos,ch});
+			}else if(ch == '[' || ch ==']'){
+				state = IDLE;
+				result.push_back(Token{TOKEN_BRACKET,line,pos,ch});
+			}else if(ch == '{' || ch =='}'){
+				state = IDLE;
+				result.push_back(Token{TOKEN_BRACE,line,pos,ch});
+			}else if(ch == '"'){
+				state = STRING_LITERAL;
+				result.push_back(Token{TOKEN_STRING,line,pos});
 			}else{
-				// can't detect;do nothing
+				// do nothing
 			}
 
 			last_IDLE_pointer =  iter;
@@ -55,7 +86,7 @@ void parse(const string &code,vector<Token>& result){
 			if (!(isalpha(ch) || isdigit(ch) || ch=='_')){
 				state = IDLE;
 				set_str(result,last_IDLE_pointer,iter);
-				check_again = true;// 重新检查当前字符
+				goto CHECK_AGAIN; // 重新检查当前字符
 			}
 			break;
 
@@ -69,7 +100,7 @@ void parse(const string &code,vector<Token>& result){
 			}else{
 				state = IDLE;
 				set_str(result,last_IDLE_pointer,iter);
-				check_again = true; // 重新检查当前字符
+				goto CHECK_AGAIN; // 重新检查当前字符
 			}
 			break;
 
@@ -87,7 +118,7 @@ void parse(const string &code,vector<Token>& result){
 			}else if(!isdigit(ch)){
 				state = IDLE;
 				set_str(result,last_IDLE_pointer,iter);
-				check_again = true;// 重新检查当前字符
+				goto CHECK_AGAIN; // 重新检查当前字符
 			}
 			break;
 		case NUMBER_EXP_SYMBOL: // 数字E
@@ -111,7 +142,7 @@ void parse(const string &code,vector<Token>& result){
 			}else{
 				state = IDLE;
 				set_str(result,last_IDLE_pointer,iter);
-				check_again = true;// 重新检查当前字符
+				goto CHECK_AGAIN; // 重新检查当前字符
 			}
 			break;
 		
@@ -150,11 +181,90 @@ void parse(const string &code,vector<Token>& result){
 			}
 			else state = ASTERISK_COMMENT_BS2;
 			break;
+		case OP:
+			auto last = *last_IDLE_pointer;
+			state = IDLE;
+			if (last =='='){
+				if(ch=='='){
+					set_str(result,last_IDLE_pointer,iter);
+				}else{
+					set_type(TOKEN_ASSIGN);
+					set_str(result,last_IDLE_pointer,iter);
+					goto CHECK_AGAIN;// 重新检查
+				}
+			}else if(last == '*' || last =='/' || last =='%' || last =='!'){
+				if(ch=='='){
+					if(last!='!')set_type(result,TOKEN_ASSIGN);
+					set_str(result,last_IDLE_pointer,iter+1);
+				}else{
+					set_str(result,last_IDLE_pointer,iter);
+					goto CHECK_AGAIN;// 重新检查
+				}
+			}else if(last=='&' || last  =='|'){
+				if ( (ch=='&' && last =='&') || (ch =='|' && last=='|') ){
+					//&& ||
+					set_str(result,last_IDLE_pointer,iter+1);
+				}else if(ch=='='){
+					set_str(result,last_IDLE_pointer,iter+1);
+				}else{
+					set_str(result,last_IDLE_pointer,iter);
+					goto CHECK_AGAIN;// 重新检查
+				}
+			}else if(last == '>' || last == '<'){
+				if(ch=='='){
+					// >= <=
+					set_str(result,last_IDLE_pointer,iter+1);
+				}else if(ch == '>' || ch =='<'){
+					state = SHIFT_ASSIGN
+					set_str(result,last_IDLE_pointer,iter+1);
+				}else{
+					set_str(result,last_IDLE_pointer,iter);
+					goto CHECK_AGAIN;// 重新检查
+				}
+			}else{
+				// ~ ^
+				if(ch=='='){
+					set_str(result,last_IDLE_pointer,iter+1);
+				}else{
+					set_str(result,last_IDLE_pointer,iter);
+					goto CHECK_AGAIN;// 重新检查
+				}
+			}
+			break;
+		case SHIFT_ASSIGN:
+			state = IDLE;
+			if(ch=='='){
+				set_type(TOKEN_ASSIGN);
+				set_str(result,last_IDLE_pointer,iter+1);
+			}else{
+				set_str(result,last_IDLE_pointer,iter);
+				goto CHECK_AGAIN;// 重新检查
+			}
+			break;
+		case PLUS_MINUS:
+			auto last = *last_IDLE_pointer;
+			if(ch == last || last == '-' && ch =='>'){
+				set_str(result,last_IDLE_pointer,iter+1);
+			}else if(ch=='='){
+				set_type(TOKEN_ASSIGN);
+				set_str(result,last_IDLE_pointer,iter+1);
+			}else{
+				set_str(result,last_IDLE_pointer,iter);
+				goto CHECK_AGAIN;// 重新检查
+			}
+		case STRING_LITERAL:
+			if(ch=='"'){
+				state = IDLE;
+				set_str(result,last_IDLE_pointer,iter+1);
+			}else if(ch=='\n'){
+				throw "STRING_LITERAL";
+			}
 		default:
 			throw "unknow state";
 			break;
 		}
-		if(!check_again){
+
+		NORMAL:
 			if(ch=='\n'){
 				pos = 1;
 				line+=1;
@@ -163,9 +273,24 @@ void parse(const string &code,vector<Token>& result){
 			}
 			iter++;
 			continue;
-		}else{
-			check_again = false;
-		}	
+
+		CHECK_AGAIN:
+			// 重新检查当前字符
+			continue;
+
+		JUMP:// 向后多跳一格
+			if(ch=='\n')
+				{pos = 1;line+=1;}
+			else 
+				pos++;
+			iter++;
+			if(ch=='\n')
+				{pos = 1;line+=1;}
+			else 
+				pos++;
+			last_IDLE_pointer =  iter;
+			iter++;
+			continue;
 	
 	}
 }

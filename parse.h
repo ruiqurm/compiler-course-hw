@@ -12,7 +12,11 @@ struct Token{
 		type(type),line(line),pos(pos){}
 	Token(int type,int line,int pos,char c):
 		type(type),line(line),pos(pos),content(1,c){}
-
+	Token(int type,int line,int pos,const char *str):
+		type(type),line(line),pos(pos),content(str){}
+	void set_type(int _type){
+		type = _type;
+	}
 	void set_str(const std::string::const_iterator& a,const std::string::const_iterator& b){
 		content.assign(a,b);
 	}
@@ -36,10 +40,27 @@ enum STAGE{
 	IDLE=0,
 	MACRO,
 	ID,
-	NUMBER_INTEGER,NUMBER_DOT_SIGN,NUMBER_DECIMAL,NUMBER_EXP_SYMBOL,NUMBER_EXP_SIGN,NUMBER_EXP, // 处理数字
-	SLASH_COMMENT,SLASH_COMMENT_CONTENT, // 处理注释
-	ASTERISK_COMMENT,ASTERISK_COMMENT_BS1,ASTERISK_COMMENT_BS2,ASTERISK_COMMENT_ESLASH,
 	
+	//数字
+	NUMBER_INTEGER,NUMBER_DOT_SIGN,NUMBER_DECIMAL,NUMBER_EXP_SYMBOL,NUMBER_EXP_SIGN,NUMBER_EXP, 
+	
+	// 处理注释
+	SLASH_COMMENT,SLASH_COMMENT_CONTENT, 
+	ASTERISK_COMMENT,ASTERISK_COMMENT_BS1,ASTERISK_COMMENT_BS2,ASTERISK_COMMENT_ESLASH,
+
+	// 操作符
+	OP,
+	SHIFT_ASSIGN,
+	PLUS_MINUS, //+ -
+	TERNARY_OP, //三目运算符
+	
+	// 括号
+	// PARENTHESES,
+	// BRACKET,
+	// BRACE,
+
+	// 字符串
+	STRING_LITERAL,
 };
 enum TOKEN_TYPE{
 	TOKEN_MACRO,
@@ -48,14 +69,11 @@ enum TOKEN_TYPE{
 	TOKEN_NUMBER,
 	TOKEN_COMMENT,
 	TOKEN_ASSIGN,
-	TOKEN_ARTHOP,
-	TOKEN_LOGOP,
-	TOKEN_BITWISEOP,
+	TOKEN_OP,
 	TOKEN_STRING,
 	TOKEN_PARENTHESES,
 	TOKEN_BRACKET,
 	TOKEN_BRACE,
-	
 };
 
 void parse(const string &code,vector<Token>& result);
