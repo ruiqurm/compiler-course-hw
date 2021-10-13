@@ -15,9 +15,10 @@ void parse(const string &code,vector<Token>& result){
 	auto line =1,pos=1;
 	std::array<int, 32> ternary_op_stack = {};
 	auto ternary_op_sp = -1;
-
+	try{
 	while(iter!=code.end()){
 		auto& ch = *iter;
+		auto last = *last_IDLE_pointer;
 		switch (state)
 		{
 		case IDLE:   // 初始状态
@@ -35,7 +36,7 @@ void parse(const string &code,vector<Token>& result){
 					state = SLASH_COMMENT;
 					result.push_back(Token{TOKEN_COMMENT,line,pos});
 				}else if((iter+1)!=code.end() && *(iter+1)=='*'){
-					state = ASTERISK_COMMENT;
+					state = ASTERISK_COMMENT_BS;
 					result.push_back(Token{TOKEN_COMMENT,line,pos});
 				}else{
 					//除法
@@ -68,6 +69,10 @@ void parse(const string &code,vector<Token>& result){
 			}else if(ch == '"'){
 				state = STRING_LITERAL;
 				result.push_back(Token{TOKEN_STRING,line,pos});
+			}else if (ch=='\''){
+				state = CHAR_LITERAL;
+				result.push_back(Token{TOKEN_CHAR,line,pos});
+
 			}else{
 				// do nothing
 			}
@@ -97,13 +102,18 @@ void parse(const string &code,vector<Token>& result){
 				state = NUMBER_EXP_SYMBOL;
 			}else if(ch=='.'){
 				state = NUMBER_DOT_SIGN;
+			}else if(last =='0' && ch=='x'){
+				//16进制
+				state = NUMBER_HEX_FIRST;
+			}else if(ch=='u'||ch=='U'||ch=='L'||ch=='l'){
+				state = NUMBER_INTEGER_SUFFIX;
 			}else{
 				state = IDLE;
 				set_str(result,last_IDLE_pointer,iter);
 				goto CHECK_AGAIN; // 重新检查当前字符
 			}
 			break;
-
+		
 		case NUMBER_DOT_SIGN:   // 数字小数点
 			if(isdigit(ch)){
 				state = NUMBER_DECIMAL;
@@ -145,7 +155,37 @@ void parse(const string &code,vector<Token>& result){
 				goto CHECK_AGAIN; // 重新检查当前字符
 			}
 			break;
-		
+		case NUMBER_HEX_FIRST:
+			if(!(isdigit(ch) || ch=='a'|| ch=='A'||
+			 ch=='b'|| ch=='B'|| ch=='c'|| ch=='C'||
+			 ch =='d'||ch=='D' || ch=='e' || ch=='E'||
+			 ch =='f'|| ch=='F')){
+				 throw "invalid hex";
+			 }else{
+				 state = NUMBER_HEX;
+			 }
+			 break;
+		case NUMBER_HEX:
+			if(ch=='u'||ch=='U'||ch=='L'||ch=='l'){
+				state = NUMBER_INTEGER_SUFFIX;
+			}else if(!(isdigit(ch) || ch=='a'|| ch=='A'||
+			 ch=='b'|| ch=='B'|| ch=='c'|| ch=='C'||
+			 ch =='d'||ch=='D' || ch=='e' || ch=='E'||
+			 ch =='f'|| ch=='F')){
+				state = IDLE;
+				set_str(result,last_IDLE_pointer,iter);
+				goto CHECK_AGAIN;
+			 }
+			break;
+		case NUMBER_INTEGER_SUFFIX:
+			if(ch=='u'||ch=='U'||ch=='L'||ch=='l'){
+				state = NUMBER_INTEGER_SUFFIX;
+			}else{
+				state = IDLE;
+				set_str(result,last_IDLE_pointer,iter);
+				goto CHECK_AGAIN;
+			}
+			break;
 		case SLASH_COMMENT:
 			if (ch=='/'){
 				state = SLASH_COMMENT_CONTENT;
@@ -161,40 +201,33 @@ void parse(const string &code,vector<Token>& result){
 			}
 			break;
 		case ASTERISK_COMMENT:
-			if(ch=='*')state=ASTERISK_COMMENT_BS1;
-			else throw "ASTERISK_COMMENT1";
+			if(ch=='*')state=ASTERISK_COMMENT_ESLASH;
 			break;
 
-		case ASTERISK_COMMENT_BS1:
-			if(ch=='*')state=ASTERISK_COMMENT_BS2;
+		case ASTERISK_COMMENT_BS:
+			if(ch=='*')state=ASTERISK_COMMENT;
 			else throw "ASTERISK_COMMENT2";
 			break;
 
-		case ASTERISK_COMMENT_BS2:
-			if(ch=='*')
-			state=ASTERISK_COMMENT_ESLASH;
-			break;
 		case ASTERISK_COMMENT_ESLASH:
 			if(ch=='/'){
 				state=IDLE;
 				set_str(result,last_IDLE_pointer,iter+1);
 			}
-			else state = ASTERISK_COMMENT_BS2;
+			else state = ASTERISK_COMMENT;
 			break;
 		case OP:
-			auto last = *last_IDLE_pointer;
+			
 			state = IDLE;
 			if (last =='='){
 				if(ch=='='){
-					set_str(result,last_IDLE_pointer,iter);
+					set_str(result,last_IDLE_pointer,iter+1);
 				}else{
-					set_type(TOKEN_ASSIGN);
 					set_str(result,last_IDLE_pointer,iter);
 					goto CHECK_AGAIN;// 重新检查
 				}
-			}else if(last == '*' || last =='/' || last =='%' || last =='!'){
+			}else if(last == '*' || last =='/' || last =='%' || last =='!'|| last == '^' || last =='~'){
 				if(ch=='='){
-					if(last!='!')set_type(result,TOKEN_ASSIGN);
 					set_str(result,last_IDLE_pointer,iter+1);
 				}else{
 					set_str(result,last_IDLE_pointer,iter);
@@ -215,26 +248,19 @@ void parse(const string &code,vector<Token>& result){
 					// >= <=
 					set_str(result,last_IDLE_pointer,iter+1);
 				}else if(ch == '>' || ch =='<'){
-					state = SHIFT_ASSIGN
+					state = SHIFT_ASSIGN;
 					set_str(result,last_IDLE_pointer,iter+1);
 				}else{
 					set_str(result,last_IDLE_pointer,iter);
 					goto CHECK_AGAIN;// 重新检查
 				}
 			}else{
-				// ~ ^
-				if(ch=='='){
-					set_str(result,last_IDLE_pointer,iter+1);
-				}else{
-					set_str(result,last_IDLE_pointer,iter);
-					goto CHECK_AGAIN;// 重新检查
-				}
+				throw "ss";
 			}
 			break;
 		case SHIFT_ASSIGN:
 			state = IDLE;
 			if(ch=='='){
-				set_type(TOKEN_ASSIGN);
 				set_str(result,last_IDLE_pointer,iter+1);
 			}else{
 				set_str(result,last_IDLE_pointer,iter);
@@ -242,11 +268,8 @@ void parse(const string &code,vector<Token>& result){
 			}
 			break;
 		case PLUS_MINUS:
-			auto last = *last_IDLE_pointer;
-			if(ch == last || last == '-' && ch =='>'){
-				set_str(result,last_IDLE_pointer,iter+1);
-			}else if(ch=='='){
-				set_type(TOKEN_ASSIGN);
+			state = IDLE;
+			if(ch == last || last == '-' && ch =='>' || ch =='='){
 				set_str(result,last_IDLE_pointer,iter+1);
 			}else{
 				set_str(result,last_IDLE_pointer,iter);
@@ -259,6 +282,51 @@ void parse(const string &code,vector<Token>& result){
 			}else if(ch=='\n'){
 				throw "STRING_LITERAL";
 			}
+			break;
+		case CHAR_LITERAL:
+			if(ch=='\\'){
+				state=CHAR_TRANSFORM;
+			}else{
+				state = CHAR_END;
+			}
+			break;
+		case CHAR_TRANSFORM:
+			if(ch=='x'){
+				// '\x12'
+				state = CHAR_X;
+			}else if(isdigit(ch)){
+				// '\123'
+				state = CHAR_DIGIT;
+			}else{
+				// '\n'
+				state = CHAR_END;
+			}
+			break;
+		case CHAR_X:
+			if(isdigit(ch)){
+				state = CHAR_DIGIT;
+			}else{
+				"CHAR_DIGIT error";	
+			}
+			break;
+		case CHAR_DIGIT:
+			if(isdigit(ch)){
+				state  = CHAR_DIGIT;
+			}else if(ch=='\''){
+				state = IDLE;
+				set_str(result,last_IDLE_pointer,iter+1);
+			}else{
+				throw "CHAR_DIGIT error";
+			}
+			break;
+		case CHAR_END:
+			if(ch=='\''){
+				state = IDLE;
+				set_str(result,last_IDLE_pointer,iter+1);
+			}else{
+				throw "CHAR_DIGIT error";
+			}
+			break;
 		default:
 			throw "unknow state";
 			break;
@@ -276,6 +344,7 @@ void parse(const string &code,vector<Token>& result){
 
 		CHECK_AGAIN:
 			// 重新检查当前字符
+			state = IDLE;
 			continue;
 
 		JUMP:// 向后多跳一格
@@ -293,6 +362,9 @@ void parse(const string &code,vector<Token>& result){
 			continue;
 	
 	}
+	}catch(const char* str){
+		printf("%s",str);
+	}
 }
 
 ostream& operator <<(ostream& os,const Token& token){
@@ -307,7 +379,12 @@ ostream& operator <<(ostream& os,const Token& token){
 	case TOKEN_KEYWORD:os<<"关键字";break;
 	case TOKEN_NUMBER:os<<"数字";break;
 	case TOKEN_COMMENT:os<<"注释";break;
-	case TOKEN_ASSIGN:os<<"赋值";break;
+	case TOKEN_OP:os<<"操作符";break;
+	case TOKEN_CHAR:os<<"字符";break;
+	case TOKEN_STRING:os<<"字符串";break;
+	case TOKEN_PARENTHESES:os<<"小括号";break;
+	case TOKEN_BRACKET:os<<"中括号";break;
+	case TOKEN_BRACE:os<<"大括号";break;
 	default:os<<"未知";break;
 	}
 	os<<" content:"<<token.content<<"\n";
@@ -320,9 +397,9 @@ ostream& operator <<(ostream& os,const Token& token){
 using namespace std;
 string Token::filename {};
 int main(){
-	ifstream fs("./test_data/numeric.c");
+	ifstream fs("./test_data/literal.c");
 	stringstream buf;
-	Token::filename.assign("./test_data/numeric.c");
+	Token::filename.assign("./test_data/literal.c");
 	if(fs.is_open()){
 		vector<Token> v;
 		buf << fs.rdbuf();
