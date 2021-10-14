@@ -1,0 +1,45 @@
+\documentclass{article}
+
+\usepackage{tikz}
+\usepackage{geometry}
+\geometry{left=1.0cm} 
+\usetikzlibrary{automata,positioning}
+\begin{document}
+
+	\begin{tikzpicture}[shorten >=1pt,node distance=2.5cm,on grid,auto] 
+		\node[state,initial] (q_0)   {$q_0$}; 
+		\node[state] (q_1) [right=of q_0] {$q_1$}; 
+		\node[state] (q_2) [below=of q_1] {$q_2$}; 
+		\node[state] (q_3) [right=of q_2] {$q_3$}; 
+		\node[state] (q_4) [right=of q_3] {$q_4$}; 
+		\node[state] (q_5) [right=of q_4] {$q_5$}; 
+		\node[state] (q_6) [right=of q_5] {$q_6$}; 
+		\node[state] (q_7) [right=of q_6] {$q_7$}; 
+		\node[state] (q_8)[below=of q_2]  {$q_8$}; 
+		\node[state] (q_8)[right=of q_8]  {$q_9$};
+		
+		\node[state] (q_10)[below=of q_8]  {$q_10$};  
+%		\node[state,accepting](q_final) [below right=of q_1] {$FINAL$};
+		\path[->] 
+		(q_0) edge  node {letter,\_} (q_1)
+		edge  node [swap] {digit} (q_2)
+		edge  node [swap] {\#} (q_8)
+		(q_1) edge  [loop above] node {letter,digit,\_} ()
+		(q_2) edge  node {.} (q_3)
+		      edge  [loop above] node {digit} ()
+		      edge  [bend left=45] node {E,e} (q_5)
+		(q_3) edge  node {digit} (q_4)
+		(q_4) edge  node {E,e} (q_5)
+	          edge  [loop above] node {digit} ()
+		(q_5) edge  node {+,-} (q_6)
+			edge  [bend left=45] node {digit} (q_7)
+		(q_6) edge  node {digit} (q_7)
+		(q_7) edge  [loop above] node {digit} ()
+		(q_8) edge  [loop above] node {*} ()
+		    edge  node [swap] {\\n} (q_9)
+	%	(q_2) edge  node [swap] {0} (q_final);
+		%edge [loop below] node {1} ();
+		;
+	\end{tikzpicture}
+
+\end{document}  
