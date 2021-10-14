@@ -20,6 +20,9 @@ struct Token{
 	void set_str(const std::string::const_iterator& a,const std::string::const_iterator& b){
 		content.assign(a,b);
 	}
+	void cat_str(const std::string::const_iterator& a,const std::string::const_iterator& b){
+		content.append(a,b);
+	}
 	bool operator <(const Token& t1){
 		return line<t1.line || line==t1.line && pos <t1.pos;
 	}
@@ -43,8 +46,9 @@ enum STAGE{
 	
 	//数字
 	NUMBER_INTEGER,NUMBER_DOT_SIGN,NUMBER_DECIMAL,NUMBER_EXP_SYMBOL,NUMBER_EXP_SIGN,NUMBER_EXP, 
-	NUMBER_HEX_FIRST,NUMBER_HEX,//16进制；8进制认为是普通整数
+	NUMBER_HEX_FIRST,NUMBER_HEX,//16进制
 	NUMBER_INTEGER_SUFFIX,//整数后缀UL
+
 	// 处理注释
 	SLASH_COMMENT,SLASH_COMMENT_CONTENT, 
 	ASTERISK_COMMENT,ASTERISK_COMMENT_BS,ASTERISK_COMMENT_ESLASH,
@@ -54,6 +58,7 @@ enum STAGE{
 	SHIFT_ASSIGN,
 	PLUS_MINUS, //+ -
 	TERNARY_OP, //三目运算符
+	
 	
 	// 括号
 	// PARENTHESES,
@@ -69,7 +74,8 @@ enum TOKEN_TYPE{
 	TOKEN_MACRO,
 	TOKEN_IDENTITY,
 	TOKEN_KEYWORD,
-	TOKEN_NUMBER,
+	TOKEN_FLOAT,
+	TOKEN_INTEGER,
 	TOKEN_COMMENT,
 	TOKEN_OP,
 	TOKEN_CHAR,
@@ -78,5 +84,11 @@ enum TOKEN_TYPE{
 	TOKEN_BRACKET,
 	TOKEN_BRACE,
 };
+
+// class LexReport{
+// 	private:
+// 		vector<Token> v;
+// 		vector<Error> e;
+// };
 
 void parse(const string &code,vector<Token>& result);

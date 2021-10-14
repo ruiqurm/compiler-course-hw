@@ -1,78 +1,134 @@
 #include"simplelex.h"
 #include<cctype>
 #include<array>
+#include<stack>
+#include<tuple>
 
+using std::tuple;
+using std::make_tuple;
+using std::stack;
 inline void set_type(vector<Token>& result,int type){
 	result[result.size()-1].set_type(type);
 }
 inline void set_str(vector<Token>& result,const std::string::const_iterator & a,const std::string::const_iterator &b){
 	result[result.size()-1].set_str(a,b);
 }
+inline void cat_str(vector<Token>& result,const std::string::const_iterator & a,const std::string::const_iterator &b){
+	result[result.size()-1].cat_str(a,b);
+}
 void parse(const string &code,vector<Token>& result){
 	auto iter = code.begin();
 	auto last_IDLE_pointer = code.begin();
+
+	// 控制信号
 	auto state = IDLE;
+	auto jump_line = false;
+	
+	// 行号记录，位置记录
 	auto line =1,pos=1;
+	auto cusum_pos = 0;
+	// 暂时没用上的三目表达式识别
 	std::array<int, 32> ternary_op_stack = {};
 	auto ternary_op_sp = -1;
+
+	// 括号栈
+	std::stack<tuple<char,int,decltype(iter)> > parentheses_stack;
+
 	try{
 	while(iter!=code.end()){
-		auto& ch = *iter;
-		auto last = *last_IDLE_pointer;
+		auto& ch = *iter;// 当前字符
+		auto last = *last_IDLE_pointer;//上一字符
 		switch (state)
 		{
 		case IDLE:   // 初始状态
-			if(ch =='#'){
+			if(ch =='#'){ 
+				// 宏
 				state = MACRO;
 				result.push_back(Token{TOKEN_MACRO,line,pos});
-			}else if (isalpha(ch) || ch =='_'){
+			}else if (isalpha(ch) || ch =='_'){ 
+				// 标识符
 				state = ID;
 				result.push_back(Token{TOKEN_IDENTITY,line,pos});
 			}else if(isdigit(ch)){
+				// 整数（可能是）
 				state = NUMBER_INTEGER;
-				result.push_back(Token{TOKEN_NUMBER,line,pos});
+				result.push_back(Token{TOKEN_INTEGER,line,pos});
 			}else if(ch=='/'){
 				if( (iter+1)!=code.end() && *(iter+1)=='/' ){
+					// 注释
 					state = SLASH_COMMENT;
 					result.push_back(Token{TOKEN_COMMENT,line,pos});
 				}else if((iter+1)!=code.end() && *(iter+1)=='*'){
+					// 段注释
 					state = ASTERISK_COMMENT_BS;
 					result.push_back(Token{TOKEN_COMMENT,line,pos});
 				}else{
-					//除法
+					// 除法
 					state = OP;
 					result.push_back(Token{TOKEN_OP,line,pos});
 				}
 			}else if(ch=='.'){
-				state = IDLE;
-				result.push_back(Token{TOKEN_OP,line,pos,'.'});
+				if((iter+1)!=code.end() && isdigit(*(iter+1) )){
+					// 小数
+					state = NUMBER_DECIMAL;// 形如 .2的小数
+					result.push_back(Token{TOKEN_FLOAT,line,pos});
+				}else{
+					// .操作符
+					state = IDLE;
+					result.push_back(Token{TOKEN_OP,line,pos,'.'});
+				}
 			}else if(ch =='=' || ch=='<' || ch =='>' || ch == '!' || ch =='|' || ch =='&' || ch =='^' || ch =='*' || ch=='%' || ch=='~'){
+				// 操作符
 				state = OP;
 				result.push_back(Token{TOKEN_OP,line,pos});
 			}else if(ch=='+' || ch=='-'){
+				// +,-
 				state = PLUS_MINUS;
 				result.push_back(Token{TOKEN_OP,line,pos});
 			}else if(ch=='?'){
+				// 三目表达式
 				ternary_op_stack[ternary_op_sp++] = result.size();
 				result.push_back(Token{TOKEN_OP,line,pos});
 			}else if(ch == ':'){
+				// 分号
 				ternary_op_sp--;
-			}else if(ch == '(' || ch ==')'){
+			}else if(ch == '('||ch=='['||ch=='{'){
+				// 括号
 				state = IDLE;
-				result.push_back(Token{TOKEN_PARENTHESES,line,pos,ch});
+				auto token = ch=='('?TOKEN_PARENTHESES:ch=='['?TOKEN_BRACKET:TOKEN_BRACE;
+				// 确定括号的类型
+				result.push_back(Token{token,line,pos,ch});
+				parentheses_stack.emplace(ch,result.size()-1,iter);
+			}else if(ch == ')'|| ch==']' || ch=='}'){
+				// 括号
+				state = IDLE;
+				auto top = parentheses_stack.top();
+				auto last_bracket = std::get<0>(top);
+				if(last_bracket=='('&& ch==')'||
+				   last_bracket=='['&& ch==']'||
+				   last_bracket=='{'&& ch=='}'){
+					auto token = std::get<1>(top);
+					result[token].set_str(std::get<2>(top),iter+1);
+					parentheses_stack.pop();
+				}else{
+					throw "括号未闭合";
+				}
 			}else if(ch == '[' || ch ==']'){
+				// 中括号
 				state = IDLE;
 				result.push_back(Token{TOKEN_BRACKET,line,pos,ch});
 			}else if(ch == '{' || ch =='}'){
+				// 大括号
 				state = IDLE;
 				result.push_back(Token{TOKEN_BRACE,line,pos,ch});
 			}else if(ch == '"'){
+				// 字符串
 				state = STRING_LITERAL;
 				result.push_back(Token{TOKEN_STRING,line,pos});
 			}else if (ch=='\''){
+				// 字符
 				state = CHAR_LITERAL;
 				result.push_back(Token{TOKEN_CHAR,line,pos});
-
 			}else{
 				// do nothing
 			}
@@ -82,9 +138,15 @@ void parse(const string &code,vector<Token>& result){
 
 		case MACRO:     // 宏
 			if(ch=='\n'){
-				state = IDLE;
-				set_str(result,last_IDLE_pointer,iter);
-				// 不需要重新检查\n
+				if(!jump_line){
+					state = IDLE;
+					set_str(result,last_IDLE_pointer,iter);
+					// 不需要重新检查\n
+				}else{
+					jump_line = false;
+				}
+			}else if(ch=='\\'){
+				jump_line = true;
 			}
 			break;
 		case ID:      // 标识符
@@ -100,8 +162,10 @@ void parse(const string &code,vector<Token>& result){
 				state = NUMBER_INTEGER;
 			}else if(ch=='E' || ch =='e'){
 				state = NUMBER_EXP_SYMBOL;
+				set_type(result,TOKEN_FLOAT);
 			}else if(ch=='.'){
 				state = NUMBER_DOT_SIGN;
+				set_type(result,TOKEN_FLOAT);
 			}else if(last =='0' && ch=='x'){
 				//16进制
 				state = NUMBER_HEX_FIRST;
@@ -217,7 +281,6 @@ void parse(const string &code,vector<Token>& result){
 			else state = ASTERISK_COMMENT;
 			break;
 		case OP:
-			
 			state = IDLE;
 			if (last =='='){
 				if(ch=='='){
@@ -278,9 +341,17 @@ void parse(const string &code,vector<Token>& result){
 		case STRING_LITERAL:
 			if(ch=='"'){
 				state = IDLE;
-				set_str(result,last_IDLE_pointer,iter+1);
+				cat_str(result,last_IDLE_pointer,iter+1);
+			}else if(ch=='\\' && (iter+1)!=code.end() && (*(iter+1)==' '|| *(iter+1)=='\n') ){
+				jump_line = true;
+				cat_str(result,last_IDLE_pointer,iter);
 			}else if(ch=='\n'){
-				throw "STRING_LITERAL";
+				if(!jump_line)
+					throw "STRING_LITERAL";
+				else{
+					last_IDLE_pointer = iter;
+					jump_line = false;
+				}
 			}
 			break;
 		case CHAR_LITERAL:
@@ -334,6 +405,7 @@ void parse(const string &code,vector<Token>& result){
 
 		NORMAL:
 			if(ch=='\n'){
+				cusum_pos += pos;
 				pos = 1;
 				line+=1;
 			}else{
@@ -349,12 +421,12 @@ void parse(const string &code,vector<Token>& result){
 
 		JUMP:// 向后多跳一格
 			if(ch=='\n')
-				{pos = 1;line+=1;}
+				{cusum_pos += pos;pos = 1;line+=1;}
 			else 
 				pos++;
 			iter++;
 			if(ch=='\n')
-				{pos = 1;line+=1;}
+				{cusum_pos += pos;pos = 1;line+=1;}
 			else 
 				pos++;
 			last_IDLE_pointer =  iter;
@@ -377,7 +449,8 @@ ostream& operator <<(ostream& os,const Token& token){
 	case TOKEN_MACRO:os<<"宏";break;
 	case TOKEN_IDENTITY:os<<"标识符";break;
 	case TOKEN_KEYWORD:os<<"关键字";break;
-	case TOKEN_NUMBER:os<<"数字";break;
+	case TOKEN_FLOAT:os<<"浮点数";break;
+	case TOKEN_INTEGER:os<<"整数";break;
 	case TOKEN_COMMENT:os<<"注释";break;
 	case TOKEN_OP:os<<"操作符";break;
 	case TOKEN_CHAR:os<<"字符";break;
