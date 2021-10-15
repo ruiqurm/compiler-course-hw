@@ -16,7 +16,9 @@ inline void set_str(vector<Token>& result,const std::string::const_iterator & a,
 inline void cat_str(vector<Token>& result,const std::string::const_iterator & a,const std::string::const_iterator &b){
 	result[result.size()-1].cat_str(a,b);
 }
-void parse(const string &code,vector<Token>& result){
+shared_ptr<LexReport> parse(const string &code){
+	auto report = make_shared<LexReport>();
+
 	auto iter = code.begin();
 	auto last_IDLE_pointer = code.begin();
 
@@ -34,6 +36,7 @@ void parse(const string &code,vector<Token>& result){
 	// 括号栈
 	std::stack<tuple<char,int,decltype(iter)> > parentheses_stack;
 
+	auto &result = report->tokens;
 	try{
 	while(iter!=code.end()){
 		auto& ch = *iter;// 当前字符
@@ -437,6 +440,16 @@ void parse(const string &code,vector<Token>& result){
 	}catch(const char* str){
 		printf("%s",str);
 	}
+
+	// 一些统计信息
+	report->lines = line;
+	report->count = code.size();
+	for(auto& token:result){
+		if(token.type == TOKEN_IDENTITY || token.type == TOKEN_KEYWORD)
+			report->words++;
+	}
+	report->failed = report->errors.size() == 0;
+	return report;
 }
 
 ostream& operator <<(ostream& os,const Token& token){
@@ -464,27 +477,40 @@ ostream& operator <<(ostream& os,const Token& token){
 	return os;
 }
 
+ostream& operator <<(ostream& os,const Error& error){
+	if(!error.filename.empty()){
+		os<<error.filename<<":";
+	}
+	os<<error.line<<":"<<error.pos<<" "<<"错误: "<<error.description;
+	return os;
+}
+
+string Token::filename {};
+string Error::filename {};
+
 #include<fstream>
 #include<sstream>
 #include<algorithm>
 using namespace std;
-string Token::filename {};
+
 int main(){
-	ifstream fs("./test_data/literal.c");
+	auto filename = "./test_data/damnit.c";
+	ifstream fs(filename);
 	stringstream buf;
-	Token::filename.assign("./test_data/literal.c");
+	Token::filename.assign(filename);
+	Error::filename.assign(filename);
 	if(fs.is_open()){
 		vector<Token> v;
 		buf << fs.rdbuf();
 		const string code { buf.str()};
-		parse(code,v);
-		sort(v.begin(),v.end());
-		for(auto &token:v){
+		auto result = parse(code);
+		sort(result->tokens.begin(),result->tokens.end());
+		for(auto &token:result->tokens){
 			cout<<token;
 		}
 	}else{
 		cout<<"No such file";
 		return -1;
 	}
-
+	return 0;
 }

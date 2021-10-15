@@ -3,6 +3,10 @@
 #include<vector>
 #include<map>
 #include<iostream>
+#include<memory>
+
+using std::shared_ptr;
+using std::make_shared;
 using std::ostream;
 using std::string;
 using std::vector;
@@ -31,13 +35,26 @@ struct Token{
 	}
 	friend ostream& operator <<(ostream& os,const Token& token);
 	static string filename;
-		int type;
-		int line;
-		int pos;
-		string content;
+	int type;
+	int line;
+	int pos;
+	string content;
 };
 
+struct Error{
+	public:
+		Error(int line,int pos,const std::string::const_iterator& iter,string &description):
+			line(line),pos(pos),iter(iter),description(description){}
+			
+		friend ostream& operator <<(ostream& os,const Error& error);
+	
 
+		int line;
+		int pos;
+		std::string::const_iterator iter;
+		string description;
+		static string filename;
+};
 
 enum STAGE{
 	IDLE=0,
@@ -61,9 +78,6 @@ enum STAGE{
 	
 	
 	// 括号
-	// PARENTHESES,
-	// BRACKET,
-	// BRACE,
 
 	// 字符串
 	STRING_LITERAL,
@@ -85,10 +99,14 @@ enum TOKEN_TYPE{
 	TOKEN_BRACE,
 };
 
-// class LexReport{
-// 	private:
-// 		vector<Token> v;
-// 		vector<Error> e;
-// };
+struct LexReport{
+	LexReport():lines(0),words(0),count(0),failed(true){}
+	vector<Token> tokens;
+	vector<Error> errors;
+	int lines;  // 行数
+	int words; // 单词总数
+	int count; // 字符总数
+	bool failed;
+};
 
-void parse(const string &code,vector<Token>& result);
+shared_ptr<LexReport> parse(const string &code);
