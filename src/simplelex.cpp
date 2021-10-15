@@ -26,17 +26,23 @@ shared_ptr<LexReport> parse(const string &code){
 	auto state = IDLE;
 	auto jump_line = false;
 	
+	// 出现异常时，向下读取直到读到什么字符时停止。
+	// 0表示任意空白符
+	// 其他为指定字符
+	char panic_stop_char = 0;
+
 	// 行号记录，位置记录
 	auto line =1,pos=1;
 	auto cusum_pos = 0;
 	// 暂时没用上的三目表达式识别
-	std::array<int, 32> ternary_op_stack = {};
-	auto ternary_op_sp = -1;
+	// std::array<int, 32> ternary_op_stack = {};
+	// auto ternary_op_sp = -1;
 
 	// 括号栈
 	std::stack<tuple<char,int,decltype(iter)> > parentheses_stack;
 
 	auto &result = report->tokens;
+	auto &error  = report->errors;
 	try{
 	while(iter!=code.end()){
 		auto& ch = *iter;// 当前字符
@@ -90,11 +96,12 @@ shared_ptr<LexReport> parse(const string &code){
 				result.push_back(Token{TOKEN_OP,line,pos});
 			}else if(ch=='?'){
 				// 三目表达式
-				ternary_op_stack[ternary_op_sp++] = result.size();
+				// ternary_op_stack[ternary_op_sp++] = result.size();
 				result.push_back(Token{TOKEN_OP,line,pos});
 			}else if(ch == ':'){
 				// 分号
-				ternary_op_sp--;
+				// ternary_op_sp--;
+				result.push_back(Token{TOKEN_OP,line,pos});
 			}else if(ch == '('||ch=='['||ch=='{'){
 				// 括号
 				state = IDLE;
@@ -116,7 +123,7 @@ shared_ptr<LexReport> parse(const string &code){
 					// result[token].set_str(std::get<2>(top),iter+1);
 					parentheses_stack.pop();
 				}else{
-					throw "括号未闭合";
+					error.emplace_back(line,pos,iter,"括号未闭合");
 				}
 			}else if(ch == '[' || ch ==']'){
 				// 中括号
@@ -187,7 +194,8 @@ shared_ptr<LexReport> parse(const string &code){
 			if(isdigit(ch)){
 				state = NUMBER_DECIMAL;
 			}else{
-				throw "error NUMBER_DOT_SIGN";
+				error.emplace_back(line,pos,iter,"浮点数后非数字");
+				goto ERROR;
 			}
 			break;
 
@@ -206,14 +214,16 @@ shared_ptr<LexReport> parse(const string &code){
 			}else if(ch=='+'||ch=='-'){
 				state = NUMBER_EXP_SIGN;
 			}else{
-				throw "error NUMBER_EXP_SYMBOL";
+				error.emplace_back(line,pos,iter,"浮点数'E'符号后面为非+,-或者数字");
+				goto ERROR;
 			}
 			break;
 		case NUMBER_EXP_SIGN: // 数字指数部分的符号
 			if(isdigit(ch)){
 				state = NUMBER_EXP;
 			}else{
-				throw "NUMBER_EXP_SIGN";
+				error.emplace_back(line,pos,iter,"浮点数E符号后非数字");
+				goto ERROR;
 			}
 		case NUMBER_EXP:
 			if (isdigit(ch)){
@@ -229,7 +239,8 @@ shared_ptr<LexReport> parse(const string &code){
 			 ch=='b'|| ch=='B'|| ch=='c'|| ch=='C'||
 			 ch =='d'||ch=='D' || ch=='e' || ch=='E'||
 			 ch =='f'|| ch=='F')){
-				 throw "invalid hex";
+				error.emplace_back(line,pos,iter,"非法16进制数");
+				goto ERROR;
 			 }else{
 				 state = NUMBER_HEX;
 			 }
@@ -259,7 +270,9 @@ shared_ptr<LexReport> parse(const string &code){
 			if (ch=='/'){
 				state = SLASH_COMMENT_CONTENT;
 			}else{
-				throw "error SLASH_COMMENT";
+				// unreachable
+				error.emplace_back(line,pos,iter,"unreachable");
+				goto FAILED;
 			}
 			break;
 		case SLASH_COMMENT_CONTENT:
@@ -275,7 +288,11 @@ shared_ptr<LexReport> parse(const string &code){
 
 		case ASTERISK_COMMENT_BS:
 			if(ch=='*')state=ASTERISK_COMMENT;
-			else throw "ASTERISK_COMMENT2";
+			else{
+				error.emplace_back(line,pos,iter,"注释格式错误");
+				panic_stop_char = '\n';
+				goto ERROR;
+			}
 			break;
 
 		case ASTERISK_COMMENT_ESLASH:
@@ -323,7 +340,8 @@ shared_ptr<LexReport> parse(const string &code){
 					goto CHECK_AGAIN;// 重新检查
 				}
 			}else{
-				throw "ss";
+				error.emplace_back(line,pos,iter,"unreach");
+				goto FAILED;
 			}
 			break;
 		case SHIFT_ASSIGN:
@@ -351,9 +369,11 @@ shared_ptr<LexReport> parse(const string &code){
 				jump_line = true;
 				cat_str(result,last_IDLE_pointer,iter);
 			}else if(ch=='\n'){
-				if(!jump_line)
-					throw "STRING_LITERAL";
-				else{
+				if(!jump_line){
+					error.emplace_back(line,pos,iter,"字符串未闭合");
+					panic_stop_char = '\n';
+					goto ERROR;
+				}else{
 					last_IDLE_pointer = iter;
 					jump_line = false;
 				}
@@ -382,7 +402,8 @@ shared_ptr<LexReport> parse(const string &code){
 			if(isdigit(ch)){
 				state = CHAR_DIGIT;
 			}else{
-				"CHAR_DIGIT error";	
+				error.emplace_back(line,pos,iter,"字符格式错误");
+				goto ERROR;
 			}
 			break;
 		case CHAR_DIGIT:
@@ -392,7 +413,8 @@ shared_ptr<LexReport> parse(const string &code){
 				state = IDLE;
 				set_str(result,last_IDLE_pointer,iter+1);
 			}else{
-				throw "CHAR_DIGIT error";
+				error.emplace_back(line,pos,iter,"字符格式错误");
+				goto ERROR;
 			}
 			break;
 		case CHAR_END:
@@ -400,11 +422,13 @@ shared_ptr<LexReport> parse(const string &code){
 				state = IDLE;
 				set_str(result,last_IDLE_pointer,iter+1);
 			}else{
-				throw "CHAR_DIGIT error";
+				error.emplace_back(line,pos,iter,"字符格式错误");
+				goto ERROR;
 			}
 			break;
 		default:
-			throw "unknow state";
+			error.emplace_back(line,pos,iter,"未知状态");
+			goto FAILED;
 			break;
 		}
 
@@ -437,7 +461,35 @@ shared_ptr<LexReport> parse(const string &code){
 			last_IDLE_pointer =  iter;
 			iter++;
 			continue;
-	
+		ERROR:
+			if(ch=='\n')
+				{cusum_pos += pos;pos = 1;line+=1;}
+			else 
+				pos++;
+			char ch2;
+			if(panic_stop_char==0){
+				while(iter!=code.end() && !isblank((ch2=*iter))){
+					pos++;//不会遇到\n
+					iter++;
+				}
+			}else{
+				while(iter!=code.end() && ((ch2=*iter) != panic_stop_char)){
+					if(ch2=='\n')
+						{cusum_pos += pos;pos = 1;line+=1;}
+					else 
+						pos++;
+					iter++;
+				}
+			}
+
+			// 重置信号
+			state = IDLE;
+			panic_stop_char = 0;
+			jump_line = false;
+
+		FAILED:
+			report->is_failed = true;
+			return report;
 	}
 	}catch(const char* str){
 		printf("%s",str);
@@ -450,7 +502,8 @@ shared_ptr<LexReport> parse(const string &code){
 		if(token.type == TOKEN_IDENTITY || token.type == TOKEN_KEYWORD)
 			report->words++;
 	}
-	report->failed = report->errors.size() == 0;
+	report->is_error  = report->errors.size() == 0;
+	report->is_failed = false;
 	return report;
 }
 
@@ -459,22 +512,22 @@ ostream& operator <<(ostream& os,const Token& token){
 		os<<token.filename<<":";
 	}
 	os<<token.line<<":"<<token.pos<<" "<<"type: ";
-	// switch (token.type)
-	// {
-	// case TOKEN_MACRO:os<<"宏";break;
-	// case TOKEN_IDENTITY:os<<"标识符";break;
-	// case TOKEN_KEYWORD:os<<"关键字";break;
-	// case TOKEN_FLOAT:os<<"浮点数";break;
-	// case TOKEN_INTEGER:os<<"整数";break;
-	// case TOKEN_COMMENT:os<<"注释";break;
-	// case TOKEN_OP:os<<"操作符";break;
-	// case TOKEN_CHAR:os<<"字符";break;
-	// case TOKEN_STRING:os<<"字符串";break;
-	// case TOKEN_PARENTHESES:os<<"小括号";break;
-	// case TOKEN_BRACKET:os<<"中括号";break;
-	// case TOKEN_BRACE:os<<"大括号";break;
-	// default:os<<"未知";break;
-	// }
+	switch (token.type)
+	{
+	case TOKEN_MACRO:os<<"宏";break;
+	case TOKEN_IDENTITY:os<<"标识符";break;
+	case TOKEN_KEYWORD:os<<"关键字";break;
+	case TOKEN_FLOAT:os<<"浮点数";break;
+	case TOKEN_INTEGER:os<<"整数";break;
+	case TOKEN_COMMENT:os<<"注释";break;
+	case TOKEN_OP:os<<"操作符";break;
+	case TOKEN_CHAR:os<<"字符";break;
+	case TOKEN_STRING:os<<"字符串";break;
+	case TOKEN_PARENTHESES:os<<"小括号";break;
+	case TOKEN_BRACKET:os<<"中括号";break;
+	case TOKEN_BRACE:os<<"大括号";break;
+	default:os<<"未知";break;
+	}
 	os<<" content:"<<token.content<<std::endl;
 	return os;
 }

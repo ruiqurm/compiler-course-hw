@@ -100,13 +100,14 @@ enum TOKEN_TYPE{
 };
 
 struct LexReport{
-	LexReport():lines(0),words(0),count(0),failed(true){}
+	LexReport():lines(0),words(0),count(0),is_failed(true),is_error(true){}
 	vector<Token> tokens;
 	vector<Error> errors;
 	int lines;  // 行数
 	int words; // 单词总数
 	int count; // 字符总数
-	bool failed;
+	bool is_error;
+	bool is_failed;
 };
 
 shared_ptr<LexReport> parse(const string &code);
