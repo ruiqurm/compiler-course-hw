@@ -110,8 +110,10 @@ shared_ptr<LexReport> parse(const string &code){
 				if(last_bracket=='('&& ch==')'||
 				   last_bracket=='['&& ch==']'||
 				   last_bracket=='{'&& ch=='}'){
-					auto token = std::get<1>(top);
-					result[token].set_str(std::get<2>(top),iter+1);
+					auto token = ch==')'?TOKEN_PARENTHESES:ch==']'?TOKEN_BRACKET:TOKEN_BRACE;
+					result.push_back(Token{token,line,pos,ch});
+					// auto token = std::get<1>(top);
+					// result[token].set_str(std::get<2>(top),iter+1);
 					parentheses_stack.pop();
 				}else{
 					throw "括号未闭合";
@@ -457,23 +459,23 @@ ostream& operator <<(ostream& os,const Token& token){
 		os<<token.filename<<":";
 	}
 	os<<token.line<<":"<<token.pos<<" "<<"type: ";
-	switch (token.type)
-	{
-	case TOKEN_MACRO:os<<"宏";break;
-	case TOKEN_IDENTITY:os<<"标识符";break;
-	case TOKEN_KEYWORD:os<<"关键字";break;
-	case TOKEN_FLOAT:os<<"浮点数";break;
-	case TOKEN_INTEGER:os<<"整数";break;
-	case TOKEN_COMMENT:os<<"注释";break;
-	case TOKEN_OP:os<<"操作符";break;
-	case TOKEN_CHAR:os<<"字符";break;
-	case TOKEN_STRING:os<<"字符串";break;
-	case TOKEN_PARENTHESES:os<<"小括号";break;
-	case TOKEN_BRACKET:os<<"中括号";break;
-	case TOKEN_BRACE:os<<"大括号";break;
-	default:os<<"未知";break;
-	}
-	os<<" content:"<<token.content<<"\n";
+	// switch (token.type)
+	// {
+	// case TOKEN_MACRO:os<<"宏";break;
+	// case TOKEN_IDENTITY:os<<"标识符";break;
+	// case TOKEN_KEYWORD:os<<"关键字";break;
+	// case TOKEN_FLOAT:os<<"浮点数";break;
+	// case TOKEN_INTEGER:os<<"整数";break;
+	// case TOKEN_COMMENT:os<<"注释";break;
+	// case TOKEN_OP:os<<"操作符";break;
+	// case TOKEN_CHAR:os<<"字符";break;
+	// case TOKEN_STRING:os<<"字符串";break;
+	// case TOKEN_PARENTHESES:os<<"小括号";break;
+	// case TOKEN_BRACKET:os<<"中括号";break;
+	// case TOKEN_BRACE:os<<"大括号";break;
+	// default:os<<"未知";break;
+	// }
+	os<<" content:"<<token.content<<std::endl;
 	return os;
 }
 
@@ -481,36 +483,10 @@ ostream& operator <<(ostream& os,const Error& error){
 	if(!error.filename.empty()){
 		os<<error.filename<<":";
 	}
-	os<<error.line<<":"<<error.pos<<" "<<"错误: "<<error.description;
+	os<<error.line<<":"<<error.pos<<" "<<"错误: "<<error.description<<std::endl;
 	return os;
 }
 
 string Token::filename {};
 string Error::filename {};
 
-#include<fstream>
-#include<sstream>
-#include<algorithm>
-using namespace std;
-
-int main(){
-	auto filename = "./test_data/damnit.c";
-	ifstream fs(filename);
-	stringstream buf;
-	Token::filename.assign(filename);
-	Error::filename.assign(filename);
-	if(fs.is_open()){
-		vector<Token> v;
-		buf << fs.rdbuf();
-		const string code { buf.str()};
-		auto result = parse(code);
-		sort(result->tokens.begin(),result->tokens.end());
-		for(auto &token:result->tokens){
-			cout<<token;
-		}
-	}else{
-		cout<<"No such file";
-		return -1;
-	}
-	return 0;
-}
