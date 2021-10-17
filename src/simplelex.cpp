@@ -7,6 +7,8 @@
 using std::tuple;
 using std::make_tuple;
 using std::stack;
+
+
 inline void set_type(vector<Token>& result,int type){
 	result[result.size()-1].set_type(type);
 }
@@ -462,13 +464,14 @@ shared_ptr<LexReport> parse(const string &code){
 			iter++;
 			continue;
 		ERROR:
+			result.pop_back();
 			if(ch=='\n')
 				{cusum_pos += pos;pos = 1;line+=1;}
 			else 
 				pos++;
 			char ch2;
 			if(panic_stop_char==0){
-				while(iter!=code.end() && !isblank((ch2=*iter))){
+				while(iter!=code.end() && !isblank(*iter)){
 					pos++;//不会遇到\n
 					iter++;
 				}
@@ -486,7 +489,7 @@ shared_ptr<LexReport> parse(const string &code){
 			state = IDLE;
 			panic_stop_char = 0;
 			jump_line = false;
-
+			continue;
 		FAILED:
 			report->is_failed = true;
 			return report;
@@ -494,7 +497,26 @@ shared_ptr<LexReport> parse(const string &code){
 	}catch(const char* str){
 		printf("%s",str);
 	}
+	if(state != IDLE){
+		if(state == SLASH_COMMENT_CONTENT || state==MACRO){
+			set_str(result,last_IDLE_pointer,iter);
+		}else{
+			result.pop_back();
+			error.emplace_back(line,pos,iter,"其他错误");
+		}
+	}
 
+	while(!parentheses_stack.empty()){
+		auto top = std::get<0>(parentheses_stack.top());
+		if (top=='(')
+			error.emplace_back(line,pos,iter,"括号未闭合");
+		else if(top=='[') 
+			error.emplace_back(line,pos,iter,"中括号未闭合");
+		else
+			error.emplace_back(line,pos,iter,"大括号未闭合");
+		parentheses_stack.pop();
+	}
+	
 	// 一些统计信息
 	report->lines = line;
 	report->count = code.size();
@@ -528,7 +550,7 @@ ostream& operator <<(ostream& os,const Token& token){
 	case TOKEN_BRACE:os<<"大括号";break;
 	default:os<<"未知";break;
 	}
-	os<<" content:"<<token.content<<std::endl;
+	os<<'\t'<<token.content<<std::endl;
 	return os;
 }
 
@@ -536,10 +558,42 @@ ostream& operator <<(ostream& os,const Error& error){
 	if(!error.filename.empty()){
 		os<<error.filename<<":";
 	}
-	os<<error.line<<":"<<error.pos<<" "<<"错误: "<<error.description<<std::endl;
+	os<<error.line<<":"<<error.pos<<" "<<error.description<<std::endl;
 	return os;
 }
 
 string Token::filename {};
 string Error::filename {};
 
+
+// #include<fstream>
+// #include<sstream>
+// #include<algorithm>
+// using namespace std;
+// int main(int argc,const char*argv[]){
+// 	string filename("../test/test_data/error.c");
+// 	ifstream fs(filename);
+// 	stringstream buf;
+// 	Token::filename.assign(filename);
+// 	Error::filename.assign(filename);
+// 	if(fs.is_open()){
+// 		vector<Token> v;
+// 		buf << fs.rdbuf();
+// 		const string code { buf.str()};
+// 		auto result = parse(code);
+// 		sort(result->tokens.begin(),result->tokens.end());
+// 		sort(result->errors.begin(),result->errors.end());
+// 		cout<<"tokens"<<endl;
+// 		for(auto &token:result->tokens){
+// 			cout<<token;
+// 		}
+// 		cout<<"errors"<<endl;
+// 		for(auto &error:result->errors){
+// 			cout<<error;
+// 		}
+// 	}else{
+// 		cout<<"No such file";
+// 		return -1;
+// 	}
+// 	return 0;
+// }

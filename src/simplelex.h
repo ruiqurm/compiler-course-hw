@@ -11,6 +11,10 @@ using std::ostream;
 using std::string;
 using std::vector;
 using std::map;
+/**
+ * @brief 符号信息
+ * 
+ */
 struct Token{
 	Token(int type,int line,int pos):
 		type(type),line(line),pos(pos){}
@@ -34,24 +38,30 @@ struct Token{
 		return line>t1.line || line==t1.line && pos >t1.pos;
 	}
 	friend ostream& operator <<(ostream& os,const Token& token);
-	static string filename;
+	static string filename; 
 	int type;
-	int line;
-	int pos;
-	string content;
+	int line; // 行号
+	int pos; // 在每行的位置
+	string content; // 具体的内容
 };
 
 struct Error{
 	public:
 		Error(int line,int pos,const std::string::const_iterator& iter,string &description):
 			line(line),pos(pos),iter(iter),description(description){}
-			
+		Error(int line,int pos,const std::string::const_iterator& iter,string description):
+			line(line),pos(pos),iter(iter),description(description){}	
 		friend ostream& operator <<(ostream& os,const Error& error);
-	
+		bool operator <(const Error& t1){
+		return line<t1.line || line==t1.line && pos <t1.pos;
+		}
+		bool operator >(const Error& t1){
+			return line>t1.line || line==t1.line && pos >t1.pos;
+		}
 
 		int line;
 		int pos;
-		std::string::const_iterator iter;
+		std::string::const_iterator iter; // 字符串内的位置
 		string description;
 		static string filename;
 };
@@ -84,19 +94,19 @@ enum STAGE{
 	CHAR_LITERAL,CHAR_TRANSFORM,CHAR_X,CHAR_DIGIT,
 	CHAR_END
 };
-enum TOKEN_TYPE{
-	TOKEN_MACRO,
-	TOKEN_IDENTITY,
-	TOKEN_KEYWORD,
-	TOKEN_FLOAT,
-	TOKEN_INTEGER,
-	TOKEN_COMMENT,
-	TOKEN_OP,
-	TOKEN_CHAR,
-	TOKEN_STRING,
-	TOKEN_PARENTHESES,
+enum{
+	TOKEN_MACRO, 
+	TOKEN_IDENTITY, 
+	TOKEN_KEYWORD, 
+	TOKEN_FLOAT, 
+	TOKEN_INTEGER, 
+	TOKEN_COMMENT, 
+	TOKEN_OP, 
+	TOKEN_CHAR, 
+	TOKEN_STRING, 
+	TOKEN_PARENTHESES, 
 	TOKEN_BRACKET,
-	TOKEN_BRACE,
+	TOKEN_BRACE, 
 };
 
 struct LexReport{
@@ -106,8 +116,8 @@ struct LexReport{
 	int lines;  // 行数
 	int words; // 单词总数
 	int count; // 字符总数
-	bool is_error;
-	bool is_failed;
+	bool is_error;  // 是否出现错误
+	bool is_failed; //是否异常终止
 };
 
 shared_ptr<LexReport> parse(const string &code);
