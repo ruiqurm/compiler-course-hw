@@ -1,21 +1,29 @@
 #include<vector>
 #include<string>
-
+#include<cctype>
 using std::vector;
 using std::string;
-template<int KEY_NUM>
+constexpr int KEY_NUM=26;
+class Trie;
 class TrieNode{
-	// TrieNode(char c):letter(c){}
-	// char letter;
+	public:
 	TrieNode(){
 		for(auto i=0;i<KEY_NUM;i++)key[i] = nullptr;
+		is_final = false;
 	}
-	TrieNode* key[KEY_NUM];
+	void set_final(){is_final=true;}
+	void unset_final(){is_final=false;}
+	bool check_is_final()const{return is_final;}
+	private:
+		friend Trie;
+		TrieNode* key[KEY_NUM];
+		bool is_final;
 };
-template<int KEY_NUM>
 class Trie{
 	public:
-		Trie(const vector<string>&v)explicit;
-		bool compare(const string& str);
-		TrieNode<KEY_NUM> root;
+		Trie(const vector<string>&v);
+		bool check(const string& str);
+	private:
+		TrieNode root;
 };
+

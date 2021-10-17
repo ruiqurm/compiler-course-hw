@@ -84,7 +84,7 @@ enum STAGE{
 	OP,
 	SHIFT_ASSIGN,
 	PLUS_MINUS, //+ -
-	TERNARY_OP, //三目运算符
+	// TERNARY_OP, //三目运算符
 	
 	
 	// 括号

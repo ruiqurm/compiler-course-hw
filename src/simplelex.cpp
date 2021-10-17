@@ -1,4 +1,5 @@
 #include"simplelex.h"
+#include"trie.h"
 #include<cctype>
 #include<array>
 #include<stack>
@@ -100,7 +101,7 @@ shared_ptr<LexReport> parse(const string &code){
 				// 三目表达式
 				// ternary_op_stack[ternary_op_sp++] = result.size();
 				result.push_back(Token{TOKEN_OP,line,pos});
-			}else if(ch == ':'){
+			}else if(ch == ':'||ch==','||ch==';'){
 				// 分号
 				// ternary_op_sp--;
 				result.push_back(Token{TOKEN_OP,line,pos});
