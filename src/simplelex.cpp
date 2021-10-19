@@ -1,14 +1,43 @@
 #include"simplelex.h"
-#include"trie.h"
 #include<cctype>
 #include<array>
 #include<stack>
 #include<tuple>
-
+#include<fstream>
 using std::tuple;
 using std::make_tuple;
 using std::stack;
+using std::ifstream;
+using std::getline;
 
+enum STAGE{
+	IDLE=0,
+	MACRO,
+	ID,
+	
+	//数字
+	NUMBER_INTEGER,NUMBER_DOT_SIGN,NUMBER_DECIMAL,NUMBER_EXP_SYMBOL,NUMBER_EXP_SIGN,NUMBER_EXP, 
+	NUMBER_HEX_FIRST,NUMBER_HEX,//16进制
+	NUMBER_INTEGER_SUFFIX,//整数后缀UL
+
+	// 处理注释
+	SLASH_COMMENT,SLASH_COMMENT_CONTENT, 
+	ASTERISK_COMMENT,ASTERISK_COMMENT_BS,ASTERISK_COMMENT_ESLASH,
+
+	// 操作符
+	OP,
+	SHIFT_ASSIGN,
+	PLUS_MINUS, //+ -
+	// TERNARY_OP, //三目运算符
+	
+	
+	// 括号
+
+	// 字符串
+	STRING_LITERAL,
+	CHAR_LITERAL,CHAR_TRANSFORM,CHAR_X,CHAR_DIGIT,
+	CHAR_END
+};
 
 inline void set_type(vector<Token>& result,int type){
 	result[result.size()-1].set_type(type);
@@ -19,6 +48,8 @@ inline void set_str(vector<Token>& result,const std::string::const_iterator & a,
 inline void cat_str(vector<Token>& result,const std::string::const_iterator & a,const std::string::const_iterator &b){
 	result[result.size()-1].cat_str(a,b);
 }
+
+Trie tree {keywords};
 shared_ptr<LexReport> parse(const string &code){
 	auto report = make_shared<LexReport>();
 
@@ -517,8 +548,14 @@ shared_ptr<LexReport> parse(const string &code){
 			error.emplace_back(line,pos,iter,"大括号未闭合");
 		parentheses_stack.pop();
 	}
-	
+	// 识别关键字
+	for(auto&token :result){
+		if(token.type == TOKEN_IDENTITY && tree.check(token.content)){
+			token.type = TOKEN_KEYWORD;
+		}
+	}
 	// 一些统计信息
+	
 	report->lines = line;
 	report->count = code.size();
 	for(auto& token:result){

@@ -4,7 +4,7 @@
 #include<map>
 #include<iostream>
 #include<memory>
-
+#include"trie.h"
 using std::shared_ptr;
 using std::make_shared;
 using std::ostream;
@@ -66,34 +66,7 @@ struct Error{
 		static string filename;
 };
 
-enum STAGE{
-	IDLE=0,
-	MACRO,
-	ID,
-	
-	//数字
-	NUMBER_INTEGER,NUMBER_DOT_SIGN,NUMBER_DECIMAL,NUMBER_EXP_SYMBOL,NUMBER_EXP_SIGN,NUMBER_EXP, 
-	NUMBER_HEX_FIRST,NUMBER_HEX,//16进制
-	NUMBER_INTEGER_SUFFIX,//整数后缀UL
 
-	// 处理注释
-	SLASH_COMMENT,SLASH_COMMENT_CONTENT, 
-	ASTERISK_COMMENT,ASTERISK_COMMENT_BS,ASTERISK_COMMENT_ESLASH,
-
-	// 操作符
-	OP,
-	SHIFT_ASSIGN,
-	PLUS_MINUS, //+ -
-	// TERNARY_OP, //三目运算符
-	
-	
-	// 括号
-
-	// 字符串
-	STRING_LITERAL,
-	CHAR_LITERAL,CHAR_TRANSFORM,CHAR_X,CHAR_DIGIT,
-	CHAR_END
-};
 enum{
 	TOKEN_MACRO, 
 	TOKEN_IDENTITY, 
@@ -119,5 +92,5 @@ struct LexReport{
 	bool is_error;  // 是否出现错误
 	bool is_failed; //是否异常终止
 };
-
+const vector<string> keywords {"auto","break","case","char","const","continue","default","do","double","else","enum","extern","float","for","goto","if","int","long","register","return","short","signed","sizeof","static","struct","switch","typedef","union","unsigned","void","volatile","while"};
 shared_ptr<LexReport> parse(const string &code);

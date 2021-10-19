@@ -1,6 +1,6 @@
-auto	
+auto
 break
-case	
+case
 char
 const
 continue
