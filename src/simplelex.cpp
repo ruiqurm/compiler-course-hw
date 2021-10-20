@@ -212,18 +212,6 @@ shared_ptr<LexReport> parse(const string &code)
 						error.emplace_back(line, pos, iter, "括号未闭合");
 					}
 				}
-				else if (ch == '[' || ch == ']')
-				{
-					// 中括号
-					state = IDLE;
-					result.push_back(Token{TOKEN_BRACKET, line, pos, ch});
-				}
-				else if (ch == '{' || ch == '}')
-				{
-					// 大括号
-					state = IDLE;
-					result.push_back(Token{TOKEN_BRACE, line, pos, ch});
-				}
 				else if (ch == '"')
 				{
 					// 字符串

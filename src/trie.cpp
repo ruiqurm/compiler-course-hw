@@ -3,6 +3,7 @@ Trie::Trie(const map<string,int>&v){
 	for(auto &p:v){
 		TrieNode* now = &root;
 		auto &str = p.first;
+		if(p.second<0)continue;
 		for(auto cc:str){
 			if(!isalpha(cc))throw;
 			char c = tolower(cc);
