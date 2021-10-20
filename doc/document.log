@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.14159265-2.6-0.999992 (TeX Live 2020/W32TeX) (preloaded format=xelatex 2021.1.25)  17 OCT 2021 21:34
+This is XeTeX, Version 3.14159265-2.6-0.999992 (TeX Live 2020/W32TeX) (preloaded format=xelatex 2021.1.25)  20 OCT 2021 18:21
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -573,7 +573,7 @@ LaTeX Font Info:    External font `cmex10' loaded for size
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <5> on input line 12.
 
-Overfull \hbox (30.90962pt too wide) in paragraph at lines 82--113
+Overfull \hbox (30.90962pt too wide) in paragraph at lines 82--117
 [][]
  []
 
@@ -581,10 +581,10 @@ Overfull \hbox (30.90962pt too wide) in paragraph at lines 82--113
 
 ] [2] (./document.aux) ) 
 Here is how much of TeX's memory you used:
- 14559 strings out of 477220
- 326597 string characters out of 5824233
- 685701 words of memory out of 5000000
- 34044 multiletter control sequences out of 15000+600000
+ 14567 strings out of 477220
+ 326721 string characters out of 5824233
+ 687995 words of memory out of 5000000
+ 34052 multiletter control sequences out of 15000+600000
  403438 words of font info for 28 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
  113i,10n,116p,419b,857s stack positions out of 5000i,500n,10000p,200000b,80000s

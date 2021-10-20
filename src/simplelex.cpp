@@ -194,21 +194,25 @@ shared_ptr<LexReport> parse(const string &code)
 				{
 					// 括号
 					state = IDLE;
-					auto top = parentheses_stack.top();
-					auto last_bracket = std::get<0>(top);
-					if (last_bracket == '(' && ch == ')' ||
-						last_bracket == '[' && ch == ']' ||
-						last_bracket == '{' && ch == '}')
-					{
-						auto token = ch == ')' ? TOKEN_PARENTHESES : ch == ']' ? TOKEN_BRACKET
-																			   : TOKEN_BRACE;
-						result.push_back(Token{token, line, pos, ch});
-						// auto token = std::get<1>(top);
-						// result[token].set_str(std::get<2>(top),iter+1);
-						parentheses_stack.pop();
-					}
-					else
-					{
+					if(!parentheses_stack.empty()){
+						auto top = parentheses_stack.top();
+						auto last_bracket = std::get<0>(top);
+						if (last_bracket == '(' && ch == ')' ||
+							last_bracket == '[' && ch == ']' ||
+							last_bracket == '{' && ch == '}')
+						{
+							auto token = ch == ')' ? TOKEN_PARENTHESES : ch == ']' ? TOKEN_BRACKET
+																				: TOKEN_BRACE;
+							result.push_back(Token{token, line, pos, ch});
+							// auto token = std::get<1>(top);
+							// result[token].set_str(std::get<2>(top),iter+1);
+							parentheses_stack.pop();
+						}
+						else
+						{
+							error.emplace_back(line, pos, iter, "括号未闭合");
+						}
+					}else{
 						error.emplace_back(line, pos, iter, "括号未闭合");
 					}
 				}
@@ -725,6 +729,7 @@ shared_ptr<LexReport> parse(const string &code)
 		else
 		{
 			result.pop_back();
+			printf("%d\n",state);
 			error.emplace_back(line, pos, iter, "其他错误");
 		}
 	}

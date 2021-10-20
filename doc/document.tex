@@ -86,28 +86,32 @@
 		\node[state,accepting] (q_22) [right=of q_21] {$q_{22}$}; 
 		\node[state] (q_23) [below=of q_21] {$q_{23}$}; 
 		
-		\node[state] (q_24) [below=of q_23] {$q_{24}$}; 
+				\node[state] (q_24) [below=of q_23] {$q_{24}$}; 
 		\node[state] (q_25) [right=of q_24] {$q_{25}$}; 
 		\node[state] (q_26) [right=of q_25] {$q_{26}$}; 
-		\node[state] (q_27) [below=of q_25] {$q_{27}$}; 
+		\node[state] (q_27) [below=of q_24] {$q_{27}$}; 
 		\node[state] (q_28) [right=of q_27] {$q_{28}$}; 
-		\node[state] (q_29) [below=of q_28] {$q_{29}$};
+		\node[state] (q_29) [below=of q_26] {$q_{29}$};
+		\node[state] (q_30) [below=of q_29] {$q_{30}$};
 		\path[->] 
 		(q_0) edge  node {``} (q_21)
        		 edge  node {'} (q_24)
 		(q_21) edge  node {``} (q_22)
 		       edge [loop above] node {*} ()
 			   edge [bend right,above] node {$\backslash$} (q_23)
-		(q_23) edge [bend right,below] node {$\backslash$n} (q_21)
-		(q_24) edge  node {$\backslash$} (q_25)
-         		edge  node {character} (q_27)
+		(q_23) edge [bend right,below] node {$\backslash$n$\epsilon$} (q_21)
+				(q_24) edge  node {$\backslash$} (q_25)
+		edge  node {character} (q_27)
 		(q_25) edge  node {x} (q_26)
-               edge  node {character} (q_27)
-               edge  node {digit} (q_28)
-		(q_26) edge  node {hexdigit} (q_28)
-		(q_27) edge  node {'} (q_29)
-		(q_28) edge  [loop right]node {hexdigit} (q_28)
-		edge  node {'} (q_29)
+		edge  node {character} (q_27)
+		edge  node {digit} (q_28)
+		(q_26) edge  node {hexdigit} (q_29)
+		(q_27) edge  node {'} (q_30)
+		(q_28) edge  [loop right]node {digit} (q_28)
+		edge  node {'} (q_30)
+		(q_29) edge  [loop right]node {hexdigit} (q_29)
+		edge  node {'} (q_30)
 		;
+		
 	\end{tikzpicture}
 \end{document}  
