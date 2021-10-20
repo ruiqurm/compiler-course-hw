@@ -1,9 +1,8 @@
 #include"trie.h"
-#include<iostream>
-using namespace std;
-Trie::Trie(const vector<string>&v){
-	for(auto &str:v){
+Trie::Trie(const map<string,int>&v){
+	for(auto &p:v){
 		TrieNode* now = &root;
+		auto &str = p.first;
 		for(auto cc:str){
 			if(!isalpha(cc))throw;
 			char c = tolower(cc);
@@ -13,25 +12,25 @@ Trie::Trie(const vector<string>&v){
 			now = now->key[c-'a'];
 
 		}
+		now->type = p.second;
 		now->set_final();
 	}
 }
 
-bool Trie::check(const string& str){
+int Trie::check(const string& str){
 	TrieNode* now = &root;
 
 	for (auto &cc:str){
-		if(!isalpha(cc))return false;
+		if(!isalpha(cc))return -1;
 		char c = tolower(cc);
 		if(now->key[c-'a']!=nullptr){
-			cout<<c;
 			now = now->key[c-'a'];
 		}else{
-			return false;
+			return -1;
 		}
 	}
-	if(now->is_final)return true;
-	else return false;
+	if(now->is_final)return now->type;
+	else return -1;
 }
 
 // #include<iostream>

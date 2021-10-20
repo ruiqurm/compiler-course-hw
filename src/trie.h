@@ -1,6 +1,8 @@
 #include<vector>
 #include<string>
 #include<cctype>
+#include<map>
+using std::map;
 using std::vector;
 using std::string;
 constexpr int KEY_NUM=26;
@@ -18,11 +20,12 @@ class TrieNode{
 		friend Trie;
 		TrieNode* key[KEY_NUM];
 		bool is_final;
+		int  type;
 };
 class Trie{
 	public:
-		Trie(const vector<string>&v);
-		bool check(const string& str);
+		Trie(const map<string,int>&v);
+		int check(const string& str);
 	private:
 		TrieNode root;
 };
