@@ -2,25 +2,23 @@
 #include"Rule.h"
 #include<vector>
 #include<map>
-#include<unordered_map>
 #include<set>
 #include<memory>
 #include<iostream>
-using std::unordered_map;
 using std::map;
 using std::set;
 using std::vector;
 using std::cout;
 using std::endl;
-using std::reference_wrapper;
 class Parser
 {
 public:
-	using symbol_set_t = set<Symbol*, symbol_ptr_less>;
-	using symbol_lookup_set_t = map<Symbol*, symbol_set_t, symbol_ptr_less>;
+	using symbol_set_t = map<string,Symbol*>;
+	using symbol_lookup_set_t = map<Symbol*, set<Symbol*,symbol_ptr_less>, symbol_ptr_less>;
 	Parser(const initializer_list<initializer_list<Symbol>>& rules);
 	symbol_lookup_set_t& first() { return _first; }
 	symbol_lookup_set_t& follow() { return _follow; }
+	bool parse(vector<Symbol>&);
 protected:
 	Symbol* _start_symbol{nullptr};
 	Symbol* _null_symbol{ nullptr };
@@ -36,7 +34,8 @@ protected:
 
 	virtual void pre_find_first_follow() {}
 	virtual void debug_parser_table() {}
-	virtual bool parse(vector<Symbol>&) { return false; }
+	virtual bool _parse(vector<Symbol>&) { return false; }
+
 private:
 	
 	void copy_and_tag_symbol(const initializer_list<initializer_list<Symbol>>& rules);

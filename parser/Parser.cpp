@@ -29,10 +29,10 @@ void Parser::find_first() {
 	
 
 	for (auto sym : _valid_terminal) {
-		_first[sym].insert(sym);
+		_first[sym.second].insert(sym.second);
 	}
 	for (auto sym : _valid_nonterminal) {
-		recursive_find_first(sym);
+		recursive_find_first(sym.second);
 	}
 
 }
@@ -85,15 +85,15 @@ void Parser::find_follow() {
 	}
 	map<int, bool> has_finded_follow_set;
 	for (auto& sym : _valid_terminal) {
-		_follow[sym].insert(sym);
+		_follow[sym.second].insert(sym.second);
 	}
 	for (auto& sym : _valid_nonterminal) {
-		has_finded_follow_set[sym->id] = false;
+		has_finded_follow_set[sym.second->id] = false;
 	}
 	for (auto sym : _valid_nonterminal) {
-		if (!has_finded_follow_set[sym->id]) {
-			recursive_find_follow(sym,has_finded_follow_set);
-			has_finded_follow_set[sym->id] = true;
+		if (!has_finded_follow_set[sym.second->id]) {
+			recursive_find_follow(sym.second,has_finded_follow_set);
+			has_finded_follow_set[sym.second->id] = true;
 		}
 	}
 }
@@ -155,12 +155,12 @@ void Parser::copy_and_tag_symbol(const initializer_list<initializer_list<Symbol>
 			all_symbols.push_back(*rule.begin());
 			all_symbols.back().id = id++;
 			symbol_set.insert(std::pair<string, Symbol*>(name,&all_symbols.back()));
+			if (rule.begin()->is_terminal())
+				_valid_terminal[name] = &all_symbols.back();
+			else
+				_valid_nonterminal[name] = &all_symbols.back();
 		}
 		auto addr = symbol_set[name];
-		if (rule.begin()->is_terminal())
-			_valid_terminal.insert(addr);
-		else
-			_valid_nonterminal.insert(addr);
 		_rules.emplace_back(*addr);// 插入一条Rule,它的from是It->second的引用
 
 
@@ -172,12 +172,13 @@ void Parser::copy_and_tag_symbol(const initializer_list<initializer_list<Symbol>
 				all_symbols.push_back(*sym);
 				all_symbols.back().id = id++;
 				symbol_set.insert(std::pair<string, Symbol*>(name, &all_symbols.back()));
+				if (sym->is_terminal())
+					_valid_terminal[name] = &all_symbols.back();
+				else
+					_valid_nonterminal[name] = &all_symbols.back();
 			}
 			auto addr = symbol_set[name];
-			if (sym->is_terminal())
-				_valid_terminal.insert(addr);
-			else
-				_valid_nonterminal.insert(addr);
+
 			_rules.back().to().push_back(addr);
 		}
 		cout << _rules.back().from()->description << "-->";
@@ -197,4 +198,15 @@ void Parser::copy_and_tag_symbol(const initializer_list<initializer_list<Symbol>
 		else
 			_conduce_to_null[rule.from()->id] = false;
 	}
+}
+
+bool Parser::parse(vector<Symbol>&v) {
+	for (auto& sym : v) {
+		if (sym.is_terminal()) {
+			sym.id = _valid_terminal[sym.description]->id;
+		}else {
+			sym.id = _valid_nonterminal[sym.description]->id;
+		}
+	}
+	return _parse(v);
 }
