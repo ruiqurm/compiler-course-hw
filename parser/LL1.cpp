@@ -1,6 +1,42 @@
 #include "LL1.h"
 #include<stack>
 using std::stack;
+void LL1::pre_find_first_follow(vector<vector<Symbol>> &rules) {
+	//// 消左递归
+	//bool check = false;
+	//do {
+	//	Symbol* s = nullptr;
+	//	for (auto& rule : rules) {
+	//		if (rule[0] == rule[1]) {
+	//			s = &rule[0];
+	//			check = true;
+	//			break;
+	//		}
+	//	}
+	//	if (!check)break;
+	//	// 找到所有相关的项目
+	//	// 形如A->Aa | b
+	//	vector<int> a_poses;
+	//	vector<int> b_poses;
+	//	for (auto i = 0; i < rules.size();i++) {
+	//		if (rules[i][0] == *s) {
+	//			if (rules[i][1] == *s) {
+	//				a_poses.push_back(i);
+	//			}
+	//			else {
+	//				b_poses.push_back(i);
+	//			}
+	//		}
+	//	}
+	//	Symbol new_sym(Symbol::TYPE::nonterminal, s->description + '\'');
+	//	for (auto& x : b_poses) {
+	//		vector<Symbol>v;
+	//		v.assign(rules[x].begin(), rules[x].end()); // A->bA'
+	//		v.push_back(new_sym);
+	//	}
+
+	//} while (check);
+}
 LL1::LL1(const initializer_list<initializer_list<Symbol>>& rules) :Parser(rules) {
 	for (auto& rule : _rules) {
 		auto alpha = rule.to()[0];

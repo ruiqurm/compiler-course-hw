@@ -1,11 +1,18 @@
 #include "Parser.h"
 #include <algorithm>
+#include <queue>
+Parser::Parser(const initializer_list<initializer_list<Symbol>> & _rules){
+	vector<vector<Symbol>> rules;
+	for (auto iter:_rules) {
+		rules.emplace_back(iter.begin(), iter.end());
+	}
+	// 改造文法
+	pre_find_first_follow(rules);
 
-Parser::Parser(const initializer_list<initializer_list<Symbol>> & rules){
-	pre_find_first_follow();
 	// 把Symbol转化成Symbol&，同时保存一份Symbol表
 	copy_and_tag_symbol(rules);
 	
+	// 找first集
 	find_first();
 	cout << "first set:" << endl;
 	for (auto& f : _first) {
@@ -16,6 +23,7 @@ Parser::Parser(const initializer_list<initializer_list<Symbol>> & rules){
 		cout << endl;
 	}
 	cout << "follow set:" << endl;
+	// 找follow集
 	find_follow();
 	for (auto& f : _follow) {
 		cout << f.first->description << "---";
@@ -26,11 +34,11 @@ Parser::Parser(const initializer_list<initializer_list<Symbol>> & rules){
 	}
 }
 void Parser::find_first() {
-	
-
+	// 插入所有非总结符
 	for (auto sym : _valid_terminal) {
 		_first[sym.second].insert(sym.second);
 	}
+	// 插入终结符
 	for (auto sym : _valid_nonterminal) {
 		recursive_find_first(sym.second);
 	}
@@ -77,16 +85,22 @@ void Parser::recursive_find_first(Symbol *sym) {
 	}
 }
 void Parser::find_follow() {
+	// 如果是文法开始符号，那么follow集加上$
 	for (auto& rule : _rules) {
 		// 文法开始符号加上$
 		if (rule.from() == _start_symbol) {
 			_follow[rule.from()].insert(_dollar_symbol);
 		}
 	}
-	map<int, bool> has_finded_follow_set;
+	// 插入所有非总结符
 	for (auto& sym : _valid_terminal) {
 		_follow[sym.second].insert(sym.second);
 	}
+	// 确定是否有被找过
+	std::vector<bool> has_finded_follow_set;
+	has_finded_follow_set.resize(_max_id + 1);
+	std::fill(has_finded_follow_set.begin(), has_finded_follow_set.end(), false);
+	// 非终结符
 	for (auto& sym : _valid_nonterminal) {
 		has_finded_follow_set[sym.second->id] = false;
 	}
@@ -97,7 +111,7 @@ void Parser::find_follow() {
 		}
 	}
 }
-void Parser::recursive_find_follow(Symbol* sym,map<int, bool>& has_finded_follow_set) {
+void Parser::recursive_find_follow(Symbol* sym, std::vector<bool>& has_finded_follow_set) {
 	// 如果找到了first集，那么跳过
 	auto& sym_set = _follow[sym];
 	for (auto rule : _rules) {
@@ -135,7 +149,7 @@ void Parser::recursive_find_follow(Symbol* sym,map<int, bool>& has_finded_follow
 	}
 }
 
-void Parser::copy_and_tag_symbol(const initializer_list<initializer_list<Symbol>>& rules) {
+void Parser::copy_and_tag_symbol(vector<vector<Symbol>>& rules) {
 	map<string,Symbol*> symbol_set;
 	int id = 0;
 	set<string>check;
@@ -192,14 +206,32 @@ void Parser::copy_and_tag_symbol(const initializer_list<initializer_list<Symbol>
 	_dollar_symbol = &all_symbols.back();
 
 	_start_symbol = &all_symbols[0];
+	_max_id = id;
+
+	find_conduce_to_null();
+
+}
+void Parser::find_conduce_to_null() {
+	std::queue<int> q;
+	_conduce_to_null.resize(_max_id+1);
+	std::fill(_conduce_to_null.begin(), _conduce_to_null.end(), false);
 	for (auto& rule : _rules) {
-		if (rule.to()[0]->is_null())
+		if (rule.to()[0]->is_null()) {
 			_conduce_to_null[rule.from()->id] = true;
-		else
-			_conduce_to_null[rule.from()->id] = false;
+			q.push(rule.from()->id);
+		}
+	}
+	while(!q.empty()){
+		int id = q.front();
+		for (auto& rule : _rules) {
+			if (rule.to()[0]->id ==id) {
+				_conduce_to_null[rule.from()->id] = true;
+				q.push(rule.from()->id);
+			}
+		}
+		q.pop();
 	}
 }
-
 bool Parser::parse(vector<Symbol>&v) {
 	for (auto& sym : v) {
 		if (sym.is_terminal()) {

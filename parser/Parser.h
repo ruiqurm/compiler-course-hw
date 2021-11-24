@@ -30,20 +30,21 @@ protected:
 	symbol_set_t _valid_terminal;
 	symbol_set_t _valid_nonterminal;
 	vector<Symbol> all_symbols;
-	map<int, bool> _conduce_to_null;
+	vector<bool> _conduce_to_null;
+	int _max_id{ 0 };
 
-	virtual void pre_find_first_follow() {}
+	virtual void pre_find_first_follow(vector<vector<Symbol>>& rules) {}
 	virtual void debug_parser_table() {}
 	virtual bool _parse(vector<Symbol>&) { return false; }
 
 private:
 	
-	void copy_and_tag_symbol(const initializer_list<initializer_list<Symbol>>& rules);
+	void copy_and_tag_symbol(vector<vector<Symbol>>& rules);
 	void find_first();
 	void recursive_find_first(Symbol*);
-	void recursive_find_follow(Symbol*, map<int, bool>&);
+	void recursive_find_follow(Symbol*, std::vector<bool>&);
 	void find_follow();
-
+	void find_conduce_to_null();//找到致空集
 };
 
 

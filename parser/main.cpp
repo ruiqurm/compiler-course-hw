@@ -82,6 +82,7 @@ int main() {
 	//		Symbol(TYPE::terminal, "num"),
 	//	},
 	//};
+
 	LL1 ll({
 		{
 			Symbol(TYPE::nonterminal, "E"),
@@ -120,5 +121,10 @@ int main() {
 			Symbol(TYPE::null, "null"),
 		},
 		});
-	cout << ll;
+	auto s = string2symbol("(a(b(2))(c))");
+	s[1].description = "id";
+	s[3].description = "id";
+	s[5].description = "num";
+	s[9].description = "id";
+	ll.parse(s);
 }

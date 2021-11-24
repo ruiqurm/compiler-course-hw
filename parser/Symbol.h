@@ -1,6 +1,10 @@
 #pragma once
 #include<string>
+#include<vector>
+#include<functional>
+using std::vector;
 using std::string;
+using std::function;
 struct Symbol
 {	
 
@@ -19,7 +23,7 @@ struct Symbol
 	int id;
 	TYPE type;
 	string description;
-
+	//bool multi_value{ false };
 	bool is_terminal()const {
 		return type == TYPE::terminal || type == TYPE::null;
 	}
@@ -51,3 +55,5 @@ struct symbol_ptr_less {
 		return *lhs < *rhs;
 	}
 };
+
+vector<Symbol> string2symbol(const string str);
