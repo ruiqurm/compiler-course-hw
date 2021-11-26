@@ -2,6 +2,7 @@
 #include "Parser.h"
 #include "LL1.h"
 #include <vector>
+#include "SLR1.h"
 using namespace std;
 using TYPE = Symbol::TYPE;
 ostream& operator<<(ostream& os, Rule& r) {
@@ -83,48 +84,81 @@ int main() {
 	//	},
 	//};
 
-	LL1 ll({
-		{
-			Symbol(TYPE::nonterminal, "E"),
-			Symbol(TYPE::nonterminal, "A"),
-		},
-		{
-			Symbol(TYPE::nonterminal, "E"),
-			Symbol(TYPE::nonterminal, "B"),
-		},
-		{
-			Symbol(TYPE::nonterminal, "A"),
-			Symbol(TYPE::terminal, "num"),
-		},
-		{
-			Symbol(TYPE::nonterminal, "A"),
-			Symbol(TYPE::terminal, "id"),
-		},
-		{
-			Symbol(TYPE::nonterminal, "B"),
-			Symbol(TYPE::terminal, "("),
-			Symbol(TYPE::nonterminal, "L"),
-			Symbol(TYPE::terminal, ")"),
-		},
-		{
-			Symbol(TYPE::nonterminal, "L"),
-			Symbol(TYPE::nonterminal, "E"),
-			Symbol(TYPE::nonterminal, "L'"),
-		},
-		{
-			Symbol(TYPE::nonterminal, "L'"),
-			Symbol(TYPE::nonterminal, "E"),
-			Symbol(TYPE::nonterminal, "L'"),
-		},
-		{
-			Symbol(TYPE::nonterminal, "L'"),
-			Symbol(TYPE::null, "null"),
-		},
+	//LL1 ll({
+	//	{
+	//		Symbol(TYPE::nonterminal, "E"),
+	//		Symbol(TYPE::nonterminal, "A"),
+	//	},
+	//	{
+	//		Symbol(TYPE::nonterminal, "E"),
+	//		Symbol(TYPE::nonterminal, "B"),
+	//	},
+	//	{
+	//		Symbol(TYPE::nonterminal, "A"),
+	//		Symbol(TYPE::terminal, "num"),
+	//	},
+	//	{
+	//		Symbol(TYPE::nonterminal, "A"),
+	//		Symbol(TYPE::terminal, "id"),
+	//	},
+	//	{
+	//		Symbol(TYPE::nonterminal, "B"),
+	//		Symbol(TYPE::terminal, "("),
+	//		Symbol(TYPE::nonterminal, "L"),
+	//		Symbol(TYPE::terminal, ")"),
+	//	},
+	//	{
+	//		Symbol(TYPE::nonterminal, "L"),
+	//		Symbol(TYPE::nonterminal, "E"),
+	//		Symbol(TYPE::nonterminal, "L'"),
+	//	},
+	//	{
+	//		Symbol(TYPE::nonterminal, "L'"),
+	//		Symbol(TYPE::nonterminal, "E"),
+	//		Symbol(TYPE::nonterminal, "L'"),
+	//	},
+	//	{
+	//		Symbol(TYPE::nonterminal, "L'"),
+	//		Symbol(TYPE::null, "null"),
+	//	},
+	//	});
+	//auto s = string2symbol("(a(b(2))(c))");
+	//s[1].description = "id";
+	//s[3].description = "id";
+	//s[5].description = "num";
+	//s[9].description = "id";
+	//ll.parse(s);
+
+	SLR1 slr1({
+			{
+				Symbol(TYPE::nonterminal, "S"),
+				Symbol(TYPE::terminal, "a"),
+				Symbol(TYPE::nonterminal, "A"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "S"),
+				Symbol(TYPE::terminal, "b"),
+				Symbol(TYPE::nonterminal, "B"),
+
+			},
+			{
+				Symbol(TYPE::nonterminal, "A"),
+				Symbol(TYPE::terminal, "c"),
+				Symbol(TYPE::nonterminal, "A"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "A"),
+				Symbol(TYPE::terminal, "d"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "B"),
+				Symbol(TYPE::terminal, "c"),
+				Symbol(TYPE::nonterminal, "B"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "B"),
+				Symbol(TYPE::nonterminal, "d"),
+			}
 		});
-	auto s = string2symbol("(a(b(2))(c))");
-	s[1].description = "id";
-	s[3].description = "id";
-	s[5].description = "num";
-	s[9].description = "id";
-	ll.parse(s);
+	slr1.build();
 }

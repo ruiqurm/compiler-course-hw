@@ -19,11 +19,14 @@ public:
 	symbol_lookup_set_t& first() { return _first; }
 	symbol_lookup_set_t& follow() { return _follow; }
 	bool parse(vector<Symbol>&);
+	virtual void build();
+
 protected:
 	Symbol* _start_symbol{nullptr};
 	Symbol* _null_symbol{ nullptr };
 	Symbol* _dollar_symbol{ nullptr };
 
+	vector<vector<Symbol>>* _tmp_rules_pointer{nullptr};
 	vector<Rule> _rules;
 	symbol_lookup_set_t _first;
 	symbol_lookup_set_t _follow;
@@ -33,7 +36,8 @@ protected:
 	vector<bool> _conduce_to_null;
 	int _max_id{ 0 };
 
-	virtual void pre_find_first_follow(vector<vector<Symbol>>& rules) {}
+	//virtual void pre_find_first_follow(vector<vector<Symbol>>& rules) {}
+	
 	virtual void debug_parser_table() {}
 	virtual bool _parse(vector<Symbol>&) { return false; }
 

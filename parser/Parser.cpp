@@ -2,16 +2,18 @@
 #include <algorithm>
 #include <queue>
 Parser::Parser(const initializer_list<initializer_list<Symbol>> & _rules){
-	vector<vector<Symbol>> rules;
+	// ugly design
+	_tmp_rules_pointer = new vector<vector<Symbol>> ;
 	for (auto iter:_rules) {
-		rules.emplace_back(iter.begin(), iter.end());
+		_tmp_rules_pointer->emplace_back(iter.begin(), iter.end());
 	}
-	// 改造文法
-	pre_find_first_follow(rules);
-
+}
+void Parser::build() {
+	// 暂存的rules，全部转换后会释放
+	auto& rules = *_tmp_rules_pointer;
 	// 把Symbol转化成Symbol&，同时保存一份Symbol表
 	copy_and_tag_symbol(rules);
-	
+
 	// 找first集
 	find_first();
 	cout << "first set:" << endl;
@@ -32,6 +34,8 @@ Parser::Parser(const initializer_list<initializer_list<Symbol>> & _rules){
 		}
 		cout << endl;
 	}
+	delete _tmp_rules_pointer;
+	_tmp_rules_pointer = nullptr;
 }
 void Parser::find_first() {
 	// 插入所有非总结符
@@ -152,6 +156,7 @@ void Parser::recursive_find_follow(Symbol* sym, std::vector<bool>& has_finded_fo
 void Parser::copy_and_tag_symbol(vector<vector<Symbol>>& rules) {
 	map<string,Symbol*> symbol_set;
 	int id = 0;
+	int rule_id = 0;
 	set<string>check;
 	for (auto a : rules) {
 		for (auto b : a) {
@@ -195,6 +200,7 @@ void Parser::copy_and_tag_symbol(vector<vector<Symbol>>& rules) {
 
 			_rules.back().to().push_back(addr);
 		}
+		_rules.back().set_id(rule_id++);
 		cout << _rules.back().from()->description << "-->";
 		for (auto& x : _rules.back().to()) {
 			cout << x->description;

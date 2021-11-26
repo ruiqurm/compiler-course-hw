@@ -1,7 +1,7 @@
 #include "LL1.h"
 #include<stack>
 using std::stack;
-void LL1::pre_find_first_follow(vector<vector<Symbol>> &rules) {
+//void LL1::pre_find_first_follow(vector<vector<Symbol>> &rules) {
 	//// 消左递归
 	//bool check = false;
 	//do {
@@ -36,8 +36,12 @@ void LL1::pre_find_first_follow(vector<vector<Symbol>> &rules) {
 	//	}
 
 	//} while (check);
-}
+//}
 LL1::LL1(const initializer_list<initializer_list<Symbol>>& rules) :Parser(rules) {
+
+}
+void LL1::build(){
+	Parser::build();
 	for (auto& rule : _rules) {
 		auto alpha = rule.to()[0];
 		auto from = rule.from();
@@ -58,7 +62,6 @@ LL1::LL1(const initializer_list<initializer_list<Symbol>>& rules) :Parser(rules)
 		}
 	}
 }
-
 bool LL1::_parse(vector<Symbol>& input){
 	stack<Symbol*> s;
 	s.push(_start_symbol);
