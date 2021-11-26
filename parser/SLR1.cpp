@@ -7,6 +7,9 @@
 using std::deque;
 using std::list;
 using std::make_tuple;
+auto Item_less = [](const Item& lhs, const Item& rhs) {
+	return *get<1>(lhs) < *get<1>(rhs) || (*get<1>(lhs) == *get<1>(rhs) && get<0>(lhs) < get<0>(rhs));
+};
 
 SLR1::SLR1(const initializer_list<initializer_list<Symbol>>& rrr) :Parser(rrr) {
 	auto& rules = *_tmp_rules_pointer;
@@ -39,40 +42,32 @@ void SLR1::build() {
 
 	while (!q.empty()) {
 		auto iter = q.front();
-		map<Symbol*,vector<tmp_vec_pointer>,symbol_ptr_less> symbol_to_item;// 每一个symbol对项目的字典，用于拓展新的项目集
-
-		// 统计shift表的信息，放入到字典中。
-		for (auto vec_pointer = iter->shift_items.begin(); vec_pointer != iter->shift_items.end();vec_pointer++) {
-			auto pos = get<0>(*vec_pointer);
-			auto &rule = get<1>(*vec_pointer);
-			if (auto find_p = symbol_to_item.find(rule->to()[pos]); find_p != symbol_to_item.end()) {
-				find_p->second.push_back(vec_pointer);
-			}
-			else {
-				symbol_to_item[rule->to()[pos]] = { vec_pointer };
-			}
-		}
-		q.pop();
 
 		// 拓展新的节点
-		for (const auto& [key,value] : symbol_to_item) {
+		for (const auto& [key,value] : iter->shift_items) {
+			// key是Symbol*,value是item列表
+
+			// 替换tmp表内容，等下用来初始化itemset
 			tmp.clear();
-			for (auto v : value) {
-				tmp.push_back(Item(get<0>(*v) + 1, get<1>(*v)));
+			for (auto &v : value) {
+				tmp.push_back(Item(get<0>(v) + 1, get<1>(v)));
 			}
-			if (auto find_p = kernel.find(tmp); find_p != kernel.end()) {
-				// 已经有了，不需要拓展
-				//find_p->second->
-			}
-			else {
-				// 暂时创建一个新节点
-				auto &ret = itemsets.emplace_back(itemsets_id++,tmp, _rules);
+
+			// 如果 核kernel 和之前的是一样的，说明重复了不需要再加入队列。
+			if (auto find_p = kernel.find(tmp); find_p == kernel.end()) {
+				auto& ret = itemsets.emplace_back(itemsets_id++, tmp, _rules);
 				kernel[tmp] = &ret;
 				if (itemsets.back().shift_items.size() > 0) {
 					q.push(&ret);
 				}
+				// 链接旧的节点和新的节点
+				iter->goto_func[key] = &ret;
+			}
+			else {
+				iter->goto_func[key] = find_p->second;
 			}
 		}
+		q.pop();
 		
 	}
 	cout << "end;";
@@ -83,7 +78,7 @@ ItemSet::ItemSet(int id, const vector<tuple<int, Rule*>>&now_rules,  vector<Rule
 	set_id(id)
 {
 	std::queue<Item>q;// BFS 队列
-	set <Item,Item_less> all_items;
+	set <Item, decltype(Item_less)> all_items(Item_less);
 	for (auto& v : now_rules) { 
 		q.push(v);
 		all_items.insert(v);
@@ -93,11 +88,14 @@ ItemSet::ItemSet(int id, const vector<tuple<int, Rule*>>&now_rules,  vector<Rule
 		auto [dot, rule] = q.front();
 		//如果可以扩展
 		if (rule->to().size() > dot) {
-			// 移进项目
-			shift_items.push_back(q.front());
-
 			// 如果是非终结符
 			auto& this_sym = *rule->to()[dot];
+
+			// 移进项目
+			auto shift_item = shift_items[&this_sym];
+			shift_item.push_back(q.front());
+			goto_func[&this_sym] = nullptr;
+
 			if (rule->to()[dot]->is_nonterminal()) {
 				// 待约项目
 				// 插入所有带这个非终结符的文法
@@ -122,7 +120,4 @@ ItemSet::ItemSet(int id, const vector<tuple<int, Rule*>>&now_rules,  vector<Rule
 		q.pop();
 	}
 	
-	// 清空goto表，让别的函数填goto表
-	fun_goto.resize(item_count);
-	std::fill(fun_goto.begin(), fun_goto.end(), nullptr);
 }
