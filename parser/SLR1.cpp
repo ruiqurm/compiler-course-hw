@@ -4,6 +4,7 @@
 #include<tuple>
 #include<list>
 #include<deque>
+#include<iomanip>
 using std::deque;
 using std::list;
 using std::make_tuple;
@@ -29,14 +30,14 @@ void SLR1::build() {
 	using tmp_vec_pointer = vector<Item>::iterator;
 	
 	auto itemsets_id = 0;
-	deque<ItemSet> itemsets; // 保存实体项目集
+
 	std::queue<itemset_pointer>q; // BFS遍历所有可能的项目集
 	vector<Item> tmp{ Item(0, &_rules[0]) };// 暂时存放新的核
 	std::map<vector<Item>, itemset_pointer> kernel;// 所有核的集合。防止重复加入
 
 	// 初始核
 	kernel.emplace(tmp, nullptr);
-	auto _ = itemsets.emplace_back(itemsets_id++, tmp, _rules);
+	auto &_ = itemsets.emplace_back(itemsets_id++, tmp, _rules);
 	kernel[tmp] = &_;
 	q.push(&_);
 
@@ -70,7 +71,42 @@ void SLR1::build() {
 		q.pop();
 		
 	}
-	cout << "end;";
+
+	for (auto& ref : itemsets) {
+		cout << "-----------------";
+		cout << "id" << ref.set_id << endl;
+		cout << "count" << ref.item_count << endl;
+		cout << "shift:" << endl;
+
+		for (auto& shift_ref : ref.shift_items) {
+			for (auto& p : shift_ref.second) {
+				auto& rule = get<1>(p);
+				auto pos = get<0>(p);
+				cout << rule->from()->description << "->";
+				for (auto sym : rule->to()) {
+					if (pos == 0)cout << '.';
+					cout << sym->description;
+					pos--;
+				}
+				cout << endl;
+			}
+		}
+		cout << "reduce:" << endl;
+		for (auto& reduce_ref : ref.reduce_items) {
+				auto& rule = get<1>(reduce_ref);
+				cout << rule->from()->description << "->";
+				for (auto sym : rule->to()) {
+					cout << sym->description;
+				}
+				cout << ".";
+				cout << endl;
+		}
+		cout << "goto:" << endl;
+		for (auto &[key, value] : ref.goto_func) {
+			cout << "[" << ref.set_id << "," << key->description << "]" << value->set_id << endl;
+		}
+		cout << endl;
+	}
 
 }
 
@@ -85,14 +121,14 @@ ItemSet::ItemSet(int id, const vector<tuple<int, Rule*>>&now_rules,  vector<Rule
 	}
 	while (!q.empty()) {
 		item_count++;
-		auto [dot, rule] = q.front();
+		auto& [dot, rule] = q.front();
 		//如果可以扩展
 		if (rule->to().size() > dot) {
 			// 如果是非终结符
 			auto& this_sym = *rule->to()[dot];
 
 			// 移进项目
-			auto shift_item = shift_items[&this_sym];
+			auto &shift_item = shift_items[&this_sym];
 			shift_item.push_back(q.front());
 			goto_func[&this_sym] = nullptr;
 

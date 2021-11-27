@@ -3,8 +3,33 @@
 #include "Rule.h"
 #include<variant>
 #include<tuple>
+#include<deque>
+using std::deque;
 using std::tuple;
 using std::variant;
+
+
+using Item = tuple<int, Rule*>;
+
+struct ItemSet {
+    /*
+    * 项目集
+    * */
+
+public:
+    ItemSet(int id, const vector<Item>&, vector<Rule>&);
+
+    // 状态id
+    int set_id;
+    int item_count{ 0 };
+    // 项目集中的项目
+    map<Symbol*, vector<Item>, symbol_ptr_less> shift_items;// 移进
+    vector<Item> reduce_items;// 规约
+    map<Symbol*, ItemSet*> goto_func; // goto函数
+
+
+};
+
 class SLR1 :
     public Parser
 {
@@ -18,25 +43,7 @@ private:
     //map<Symbol*, map<Symbol, variant<Rule&, int>>>_action;
     //map<Symbol*, int>_goto;
     bool valid{ true };
+    deque<ItemSet> itemsets;	 // 保存实体项目集
 };
 
-using Item = tuple<int, Rule*>;
 
-struct ItemSet {
-    /*
-    * 项目集
-    * */
-
-public:
-    ItemSet(int id, const vector<Item>&, vector<Rule>&);
-    
-    // 状态id
-    int set_id;
-    int item_count{ 0 };
-    // 项目集中的项目
-    map<Symbol*,vector<Item>,symbol_ptr_less> shift_items;// 移进
-    vector<Item> reduce_items;// 规约
-    map<Symbol*,ItemSet*> goto_func; // goto函数
-
-    
-};
