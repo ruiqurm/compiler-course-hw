@@ -26,6 +26,7 @@ public:
 	bool operator ==(const Rule& r)const {
 		return _id == r._id;
 	}
+	int id()const { return _id; }
 private:
 	int _id{ 0 };
 	Symbol* _from;
