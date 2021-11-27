@@ -9,6 +9,7 @@ Parser::Parser(const initializer_list<initializer_list<Symbol>> & _rules){
 	}
 }
 void Parser::build() {
+	if (_is_build)return;
 	// 暂存的rules，全部转换后会释放
 	auto& rules = *_tmp_rules_pointer;
 	// 把Symbol转化成Symbol&，同时保存一份Symbol表
@@ -36,6 +37,7 @@ void Parser::build() {
 	}
 	delete _tmp_rules_pointer;
 	_tmp_rules_pointer = nullptr;
+	_is_build = true;
 }
 void Parser::find_first() {
 	// 插入所有非总结符
@@ -210,6 +212,7 @@ void Parser::copy_and_tag_symbol(vector<vector<Symbol>>& rules) {
 	// 插入dollar符号
 	all_symbols.push_back(make_dollar_symbol(id++));
 	_dollar_symbol = &all_symbols.back();
+	_valid_terminal[_dollar_symbol->description]= _dollar_symbol;
 
 	_start_symbol = &all_symbols[0];
 	_max_id = id;
@@ -239,6 +242,9 @@ void Parser::find_conduce_to_null() {
 	}
 }
 bool Parser::parse(vector<Symbol>&v) {
+	if (!_is_build) {
+		build();
+	}
 	for (auto& sym : v) {
 		if (sym.is_terminal()) {
 			sym.id = _valid_terminal[sym.description]->id;

@@ -18,7 +18,7 @@ public:
 	Parser(const initializer_list<initializer_list<Symbol>>& rules);
 	symbol_lookup_set_t& first() { return _first; }
 	symbol_lookup_set_t& follow() { return _follow; }
-	bool parse(vector<Symbol>&);
+	virtual bool parse(vector<Symbol>&);
 	virtual void build();
 
 protected:
@@ -35,10 +35,13 @@ protected:
 	vector<Symbol> all_symbols;
 	vector<bool> _conduce_to_null;
 	int _max_id{ 0 };
-
-	//virtual void pre_find_first_follow(vector<vector<Symbol>>& rules) {}
+	bool _is_build{ false };
 	
-	virtual void debug_parser_table() {}
+	virtual void debug_parser_table() {
+		if (!_is_build) {
+			build();
+		}
+	}
 	virtual bool _parse(vector<Symbol>&) { return false; }
 
 private:
