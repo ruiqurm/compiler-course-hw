@@ -131,34 +131,27 @@ int main() {
 
 	SLR1 slr1({
 			{
-				Symbol(TYPE::nonterminal, "S"),
+				Symbol(TYPE::nonterminal, "E"),
+				Symbol(TYPE::terminal, "("),
+				Symbol(TYPE::nonterminal, "L"),
+				Symbol(TYPE::terminal, ")"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "E"),
 				Symbol(TYPE::terminal, "a"),
-				Symbol(TYPE::nonterminal, "A"),
 			},
 			{
-				Symbol(TYPE::nonterminal, "S"),
-				Symbol(TYPE::terminal, "b"),
-				Symbol(TYPE::nonterminal, "B"),
-
+				Symbol(TYPE::nonterminal, "L"),
+				Symbol(TYPE::nonterminal, "E"),
+				Symbol(TYPE::nonterminal, "L"),
 			},
 			{
-				Symbol(TYPE::nonterminal, "A"),
-				Symbol(TYPE::terminal, "c"),
-				Symbol(TYPE::nonterminal, "A"),
-			},
-			{
-				Symbol(TYPE::nonterminal, "A"),
-				Symbol(TYPE::terminal, "d"),
-			},
-			{
-				Symbol(TYPE::nonterminal, "B"),
-				Symbol(TYPE::terminal, "c"),
-				Symbol(TYPE::nonterminal, "B"),
-			},
-			{
-				Symbol(TYPE::nonterminal, "B"),
-				Symbol(TYPE::nonterminal, "d"),
+				Symbol(TYPE::nonterminal, "L"),
+				Symbol(TYPE::nonterminal, "E"),
 			}
 		});
-	slr1.build();
+	//slr1.build();
+	slr1.debug_parser_table();
+	auto s = string2symbol("((a)a(aa))");
+	slr1.parse(s);
 }

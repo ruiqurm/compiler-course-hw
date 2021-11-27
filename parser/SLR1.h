@@ -1,9 +1,13 @@
 #pragma once
 #include "Parser.h"
 #include "Rule.h"
+#include<unordered_map>
 #include<variant>
 #include<tuple>
 #include<deque>
+#include<memory>
+using std::unordered_map;
+using std::shared_ptr;
 using std::deque;
 using std::tuple;
 using std::variant;
@@ -25,7 +29,7 @@ public:
     // 项目集中的项目
     map<Symbol*, vector<Item>, symbol_ptr_less> shift_items;// 移进
     vector<Item> reduce_items;// 规约
-    map<Symbol*, ItemSet*> goto_func; // goto函数
+    map<Symbol*, ItemSet*> goto_func; // goto函数，仅用于debug
 
 
 };
@@ -36,14 +40,35 @@ class SLR1 :
 public:
     SLR1(const initializer_list<initializer_list<Symbol>>& rules);
     void build() override;
+    void debug_parser_table()override;
+    bool parse(vector<Symbol>&)override;
 
 private:
-    //void pre_find_first_follow(vector<vector<Symbol>>& rules)override;
-    bool _parse(vector<Symbol>&)override { return false; }
-    //map<Symbol*, map<Symbol, variant<Rule&, int>>>_action;
-    //map<Symbol*, int>_goto;
+    shared_ptr<unordered_map<Symbol*, variant<Rule*, int>>[]> _action;//action表
+    shared_ptr<unordered_map<Symbol*, int>[]> _goto;//goto表
     bool valid{ true };
-    deque<ItemSet> itemsets;	 // 保存实体项目集
+    unsigned _max_state{ 0 };
+    Symbol* relocate_symbol(std::vector<Symbol>::iterator& iter,vector<Symbol>&v) {
+        if (iter == v.end())return _dollar_symbol;
+        if (iter->is_terminal()) {
+            if (auto p = _valid_terminal.find(iter->description); p != _valid_terminal.end()) {
+                return p->second;
+            }
+            else {
+                //找不到符号
+                return nullptr;
+            }
+        }
+        else {
+            if (auto p = _valid_nonterminal.find(iter->description); p != _valid_nonterminal.end()) {
+                return p->second;
+            }
+            else {
+                //找不到符号
+                return nullptr;
+            }
+        }
+    }
 };
 
 

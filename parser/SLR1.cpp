@@ -5,6 +5,10 @@
 #include<list>
 #include<deque>
 #include<iomanip>
+#include <variant>
+#include <stack>
+using std::stack;
+using std::visit;
 using std::deque;
 using std::list;
 using std::make_tuple;
@@ -30,7 +34,7 @@ void SLR1::build() {
 	using tmp_vec_pointer = vector<Item>::iterator;
 	
 	auto itemsets_id = 0;
-
+	deque<ItemSet> itemsets;	 // 保存实体项目集
 	std::queue<itemset_pointer>q; // BFS遍历所有可能的项目集
 	vector<Item> tmp{ Item(0, &_rules[0]) };// 暂时存放新的核
 	std::map<vector<Item>, itemset_pointer> kernel;// 所有核的集合。防止重复加入
@@ -72,6 +76,7 @@ void SLR1::build() {
 		
 	}
 
+	// 查看DFA构建状况
 	for (auto& ref : itemsets) {
 		cout << "-----------------";
 		cout << "id" << ref.set_id << endl;
@@ -93,7 +98,7 @@ void SLR1::build() {
 		}
 		cout << "reduce:" << endl;
 		for (auto& reduce_ref : ref.reduce_items) {
-				auto& rule = get<1>(reduce_ref);
+				auto rule = get<1>(reduce_ref);
 				cout << rule->from()->description << "->";
 				for (auto sym : rule->to()) {
 					cout << sym->description;
@@ -108,7 +113,126 @@ void SLR1::build() {
 		cout << endl;
 	}
 
+	// 构建分析表
+	_max_state = itemsets_id;
+	_action = std::make_shared<unordered_map<Symbol*, variant<Rule*, int>>[]>(_max_state);
+	_goto = std::make_shared<unordered_map<Symbol*, int>[]>(_max_state);
+	for (auto& ref : itemsets) {
+		// 遍历所有归约项
+		for (auto& shift_ref : ref.shift_items) {
+			auto p = shift_ref.first;
+			if (p->is_terminal()) {
+				// 如果是终结符，写入action表
+				_action[ref.set_id][p] = std::variant<Rule*, int>(ref.goto_func[p]->set_id);
+			}
+			else {
+				// 如果是非终结符，写入goto表
+				_goto[ref.set_id][p] = ref.goto_func[p]->set_id;
+			}
+		}
+		for (auto& reduce_ref : ref.reduce_items) {
+			auto rule = get<1>(reduce_ref);
+			for(auto &follow_x:_follow[rule->from()]){
+				_action[ref.set_id][follow_x] = std::variant<Rule*, int>(rule);
+			}
+
+		}
+		
+	}
 }
+
+// helper type for the visitor #4
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+// explicit deduction guide (not needed as of C++20)
+template<class... Ts> overloaded(Ts...)->overloaded<Ts...>;
+
+void SLR1::debug_parser_table() {
+	Parser::debug_parser_table();
+	cout << "action" << endl;
+	cout << "\t";
+	for (auto& [key,value] : _valid_terminal) {
+		cout << value->description << "\t";
+	}
+	cout << endl;
+	for (auto i = 0; i < _max_state; i++) {
+		cout << i << "\t";
+		for (auto& [key, value] : _valid_terminal) {
+			if (auto find_p = _action[i].find(value); find_p != _action[i].end()) {
+				std::visit(overloaded{
+			   [](Rule* r) { 
+					cout << r->from()->description << "->";
+					for (auto sym : r->to()) {
+						cout << sym->description;
+					}
+					std::cout << "\t"; 
+					},
+			   [](int i) { std::cout << i<<"\t"; },
+						}, find_p->second);
+				}
+			else {
+				cout << "\t";
+			}
+		}
+		cout<<endl;
+	}
+}
+
+bool SLR1::parse(vector<Symbol>& str) {
+	stack < std::tuple <int, Symbol*>> s;//符号状态栈
+	s.emplace(0, _dollar_symbol);
+	auto iter = str.begin();
+	auto flag = true;
+	while (flag) {
+		auto [state, sign] = s.top();
+		// 找到对应的symbol。这里由于前期实现问题，必须要找到相应的内部指针
+		Symbol* sym = relocate_symbol(iter, str);
+		if (sym == nullptr) {
+			cout << "unknow symbol: " << iter->description << endl;
+			return false;
+		}
+		
+		// 如果找到有效条目
+		if (auto p = _action[state].find(sym); p != _action[state].end()) {
+			std::visit(overloaded{
+				// 如果是移进
+				[&](int i) {
+					iter++;
+					s.emplace(i, sym);//新状态和符号入栈
+					// 输出移进项
+					cout << "Shift " << i<<" "<<sym->description << endl;
+				},
+				// 如果是规约
+				[&](Rule* r) {
+					for (auto i = 0; i < r->to().size();i++)s.pop();//移出size个符号
+					// 输出规约法则：
+					cout << "Reduce by " << r->from()->description << "->";
+					for (auto sym : r->to()) {
+						cout << sym->description;
+					}
+					cout << endl;
+					if (r->id() != 0) {
+						auto [state, sign] = s.top();
+						s.emplace(_goto[state][r->from()], r->from());
+					}
+					else {
+						// 如果是最终规约
+						flag = false;
+					}
+				}
+				}, p->second);
+		}
+		else {
+			// 否则
+			cout << "stop at state:"<<state<<" sym:"<<sym->description;
+			return false;
+		}
+
+	}
+	return true;
+}
+
+
+
 
 ItemSet::ItemSet(int id, const vector<tuple<int, Rule*>>&now_rules,  vector<Rule>& all_rules):
 	set_id(id)
