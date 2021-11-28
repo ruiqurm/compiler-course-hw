@@ -2,7 +2,7 @@
 #include "Parser.h"
 #include "LL1.h"
 #include <vector>
-#include "LR1.h"
+#include "SLR1.h"
 using namespace std;
 using TYPE = Symbol::TYPE;
 ostream& operator<<(ostream& os, Rule& r) {
@@ -129,29 +129,52 @@ int main() {
 	//s[9].description = "id";
 	//ll.parse(s);
 
-	LR1 lr1({
+	SLR1 slr1({
 			{
 				Symbol(TYPE::nonterminal, "E"),
+				Symbol(TYPE::nonterminal, "E"),
+				Symbol(TYPE::terminal, "+"),
+				Symbol(TYPE::nonterminal, "T"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "E"),
+				Symbol(TYPE::nonterminal, "E"),
+				Symbol(TYPE::terminal, "-"),
+				Symbol(TYPE::nonterminal, "T"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "E"),
+				Symbol(TYPE::nonterminal, "T"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "T"),
+				Symbol(TYPE::nonterminal, "T"),
+				Symbol(TYPE::terminal, "*"),
+				Symbol(TYPE::nonterminal, "F"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "T"),
+				Symbol(TYPE::nonterminal, "T"),
+				Symbol(TYPE::terminal, "/"),
+				Symbol(TYPE::nonterminal, "F"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "T"),
+				Symbol(TYPE::nonterminal, "F"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "F"),
 				Symbol(TYPE::terminal, "("),
-				Symbol(TYPE::nonterminal, "L"),
+				Symbol(TYPE::nonterminal, "E"),
 				Symbol(TYPE::terminal, ")"),
 			},
 			{
-				Symbol(TYPE::nonterminal, "E"),
-				Symbol(TYPE::terminal, "a"),
+				Symbol(TYPE::nonterminal, "F"),
+				Symbol(TYPE::terminal, "num"),
 			},
-			{
-				Symbol(TYPE::nonterminal, "L"),
-				Symbol(TYPE::nonterminal, "E"),
-				Symbol(TYPE::nonterminal, "L"),
-			},
-			{
-				Symbol(TYPE::nonterminal, "L"),
-				Symbol(TYPE::nonterminal, "E"),
-			}
 		});
-	lr1.build();
-	//slr1.debug_parser_table();
+	//lr1.build();
+	slr1.debug_parser_table();
 	//auto s = string2symbol("((a)a(aa))");
 	//slr1.parse(s);
 }
