@@ -163,7 +163,7 @@ void SLR1::debug_parser_table() {
 		cout << value->description << "\t";
 	}
 	cout << endl;
-	for (auto i = 0; i < _max_state; i++) {
+	for (unsigned i = 0; i < _max_state; i++) {
 		cout << i << "\t";
 		for (auto& [key, value] : _valid_terminal) {
 			if (auto find_p = _action[i].find(value); find_p != _action[i].end()) {
@@ -274,7 +274,7 @@ ItemSet::ItemSet(int id, const vector<tuple<int, Rule*>>&now_rules,  vector<Rule
 						auto old_size = all_items.size();
 						auto new_tuple = Item(0, &rule);
 						all_items.insert(new_tuple);
-						if (old_size != all_items.size() && !r.to()[0]->is_null()) {
+						if (old_size != all_items.size() && !rule.to()[0]->is_null()) {
 							q.emplace(new_tuple);
 						}
 					}

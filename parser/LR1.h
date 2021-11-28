@@ -35,7 +35,7 @@ class LR1 :
 public:
     LR1(const initializer_list<initializer_list<Symbol>>& rules);
     void build() override;
-    //void debug_parser_table()override;
+    void debug_parser_table()override;
     //bool parse(vector<Symbol>&)override;
 private:
     shared_ptr<unordered_map<Symbol*, variant<Rule*, int>>[]> _action;//action表

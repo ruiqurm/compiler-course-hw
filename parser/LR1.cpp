@@ -40,7 +40,7 @@ ItemSet::ItemSet(int id, const vector<Item>& now_rules, vector<Rule>& all_rules,
 						if (rule->to().size() <= dot + 1) {
 							auto new_tuple = Item(0, &r, psymbol);
 							all_items.insert(new_tuple);
-							if (old_size != all_items.size()) {
+							if (old_size != all_items.size() && !r.to()[0]->is_null()) {
 								q.emplace(new_tuple);
 							}
 						}
@@ -82,14 +82,24 @@ ItemSet::ItemSet(int id, const vector<Item>& now_rules, vector<Rule>& all_rules,
 
 
 LR1::LR1(const initializer_list<initializer_list<Symbol>>& rrr) :Parser(rrr) {
-	auto& rules = *_tmp_rules_pointer;
-	// 拓广文法
-	rules.insert(rules.begin(),
-		vector<Symbol>{
-		Symbol(Symbol::TYPE::nonterminal, rules[0][0].description + "'"),
-			Symbol(Symbol::TYPE::nonterminal, rules[0][0].description)
+	
+	auto& start_sym = rrr.begin()->begin()->description;
+	int cnt = 0;
+	for (auto i : rrr) {
+		if (i.begin()->description == start_sym) {
+			cnt++;
+		}
 	}
-	);
+	if (cnt > 1) {
+		auto& rules = *_tmp_rules_pointer;
+		// 拓广文法
+		rules.insert(rules.begin(),
+			vector<Symbol>{
+			Symbol(Symbol::TYPE::nonterminal, rules[0][0].description + "'"),
+				Symbol(Symbol::TYPE::nonterminal, rules[0][0].description)
+		}
+		);
+	}
 }
 
 
@@ -183,29 +193,63 @@ void LR1::build() {
 	}
 
 	// 构建分析表
-	//_max_state = itemsets_id;
-	//_action = std::make_shared<unordered_map<Symbol*, variant<Rule*, int>>[]>(_max_state);
-	//_goto = std::make_shared<unordered_map<Symbol*, int>[]>(_max_state);
-	//for (auto& ref : itemsets) {
-	//	// 遍历所有归约项
-	//	for (auto& shift_ref : ref.shift_items) {
-	//		auto p = shift_ref.first;
-	//		if (p->is_terminal()) {
-	//			// 如果是终结符，写入action表
-	//			_action[ref.set_id][p] = std::variant<Rule*, int>(ref.goto_func[p]->set_id);
-	//		}
-	//		else {
-	//			// 如果是非终结符，写入goto表
-	//			_goto[ref.set_id][p] = ref.goto_func[p]->set_id;
-	//		}
-	//	}
-	//	for (auto& reduce_ref : ref.reduce_items) {
-	//		auto rule = get<1>(reduce_ref);
-	//		for (auto& follow_x : _follow[rule->from()]) {
-	//			_action[ref.set_id][follow_x] = std::variant<Rule*, int>(rule);
-	//		}
+	_max_state = itemsets_id;
+	_action = std::make_shared<unordered_map<Symbol*, variant<Rule*, int>>[]>(_max_state);
+	_goto = std::make_shared<unordered_map<Symbol*, int>[]>(_max_state);
+	for (auto& ref : itemsets) {
+		// 遍历所有归约项
+		for (auto& shift_ref : ref.shift_items) {
+			auto p = shift_ref.first;
+			if (p->is_terminal()) {
+				// 如果是终结符，写入action表
+				_action[ref.set_id][p] = std::variant<Rule*, int>(ref.goto_func[p]->set_id);
+			}
+			else {
+				// 如果是非终结符，写入goto表
+				_goto[ref.set_id][p] = ref.goto_func[p]->set_id;
+			}
+		}
+		for (auto& reduce_ref : ref.reduce_items) {
+			auto rule = get<1>(reduce_ref);
+			auto sym = get<2>(reduce_ref);
+			_action[ref.set_id][sym] = std::variant<Rule*, int>(rule);
+		}
 
-	//	}
+	}
+}
 
-	//}
+// helper type for the visitor #4
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+// explicit deduction guide (not needed as of C++20)
+template<class... Ts> overloaded(Ts...)->overloaded<Ts...>;
+
+void LR1::debug_parser_table() {
+	Parser::debug_parser_table();
+	cout << "action" << endl;
+	cout << "\t";
+	for (auto& [key, value] : _valid_terminal) {
+		cout << value->description << "\t";
+	}
+	cout << endl;
+	for (unsigned i = 0; i < _max_state; i++) {
+		cout << i << "\t";
+		for (auto& [key, value] : _valid_terminal) {
+			if (auto find_p = _action[i].find(value); find_p != _action[i].end()) {
+				std::visit(overloaded{
+			   [](Rule* r) {
+					cout << r->from()->description << "->";
+					for (auto sym : r->to()) {
+						cout << sym->description;
+					}
+					std::cout << "\t";
+					},
+			   [](int i) { std::cout << i << "\t"; },
+					}, find_p->second);
+			}
+			else {
+				cout << "\t";
+			}
+		}
+		cout << endl;
+	}
 }
