@@ -17,14 +17,23 @@ auto SLR1_Item_less = [](const Item& lhs, const Item& rhs) {
 };
 
 SLR1::SLR1(const initializer_list<initializer_list<Symbol>>& rrr) :Parser(rrr) {
-	auto& rules = *_tmp_rules_pointer;
-	// 拓广文法
-	rules.insert(rules.begin(),
-		vector<Symbol>{
-		Symbol(Symbol::TYPE::nonterminal, rules[0][0].description + "'"),
-			Symbol(Symbol::TYPE::nonterminal, rules[0][0].description)
+	auto& start_sym = rrr.begin()->begin()->description;
+	int cnt = 0;
+	for (auto i : rrr) {
+		if (i.begin()->description == start_sym) {
+			cnt++;
+		}
 	}
-	);
+	if (cnt > 1) {
+		auto& rules = *_tmp_rules_pointer;
+		// 拓广文法
+		rules.insert(rules.begin(),
+			vector<Symbol>{
+			Symbol(Symbol::TYPE::nonterminal, rules[0][0].description + "'"),
+				Symbol(Symbol::TYPE::nonterminal, rules[0][0].description)
+		}
+		);
+	}
 }
 
 
@@ -265,7 +274,7 @@ ItemSet::ItemSet(int id, const vector<tuple<int, Rule*>>&now_rules,  vector<Rule
 						auto old_size = all_items.size();
 						auto new_tuple = Item(0, &rule);
 						all_items.insert(new_tuple);
-						if (old_size != all_items.size()) {
+						if (old_size != all_items.size() && !r.to()[0]->is_null()) {
 							q.emplace(new_tuple);
 						}
 					}
