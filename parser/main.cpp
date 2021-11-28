@@ -2,7 +2,7 @@
 #include "Parser.h"
 #include "LL1.h"
 #include <vector>
-#include "SLR1.h"
+#include "LR1.h"
 using namespace std;
 using TYPE = Symbol::TYPE;
 ostream& operator<<(ostream& os, Rule& r) {
@@ -129,7 +129,7 @@ int main() {
 	//s[9].description = "id";
 	//ll.parse(s);
 
-	SLR1 slr1({
+	LR1 lr1({
 			{
 				Symbol(TYPE::nonterminal, "E"),
 				Symbol(TYPE::terminal, "("),
@@ -150,8 +150,8 @@ int main() {
 				Symbol(TYPE::nonterminal, "E"),
 			}
 		});
-	//slr1.build();
-	slr1.debug_parser_table();
-	auto s = string2symbol("((a)a(aa))");
-	slr1.parse(s);
+	lr1.build();
+	//slr1.debug_parser_table();
+	//auto s = string2symbol("((a)a(aa))");
+	//slr1.parse(s);
 }

@@ -12,7 +12,7 @@ using std::visit;
 using std::deque;
 using std::list;
 using std::make_tuple;
-auto Item_less = [](const Item& lhs, const Item& rhs) {
+auto SLR1_Item_less = [](const Item& lhs, const Item& rhs) {
 	return *get<1>(lhs) < *get<1>(rhs) || (*get<1>(lhs) == *get<1>(rhs) && get<0>(lhs) < get<0>(rhs));
 };
 
@@ -238,7 +238,7 @@ ItemSet::ItemSet(int id, const vector<tuple<int, Rule*>>&now_rules,  vector<Rule
 	set_id(id)
 {
 	std::queue<Item>q;// BFS 队列
-	set <Item, decltype(Item_less)> all_items(Item_less);
+	set <Item, decltype(SLR1_Item_less)> all_items(SLR1_Item_less);
 	for (auto& v : now_rules) { 
 		q.push(v);
 		all_items.insert(v);
