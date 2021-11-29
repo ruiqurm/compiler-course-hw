@@ -1,44 +1,88 @@
 #include "LL1.h"
+#include"Symbol.h"
 #include<stack>
+#include<algorithm>
+using std::erase_if;
 using std::stack;
 //void LL1::pre_find_first_follow(vector<vector<Symbol>> &rules) {
-	//// 消左递归
-	//bool check = false;
-	//do {
-	//	Symbol* s = nullptr;
-	//	for (auto& rule : rules) {
-	//		if (rule[0] == rule[1]) {
-	//			s = &rule[0];
-	//			check = true;
-	//			break;
-	//		}
-	//	}
-	//	if (!check)break;
-	//	// 找到所有相关的项目
-	//	// 形如A->Aa | b
-	//	vector<int> a_poses;
-	//	vector<int> b_poses;
-	//	for (auto i = 0; i < rules.size();i++) {
-	//		if (rules[i][0] == *s) {
-	//			if (rules[i][1] == *s) {
-	//				a_poses.push_back(i);
-	//			}
-	//			else {
-	//				b_poses.push_back(i);
-	//			}
-	//		}
-	//	}
-	//	Symbol new_sym(Symbol::TYPE::nonterminal, s->description + '\'');
-	//	for (auto& x : b_poses) {
-	//		vector<Symbol>v;
-	//		v.assign(rules[x].begin(), rules[x].end()); // A->bA'
-	//		v.push_back(new_sym);
-	//	}
 
-	//} while (check);
 //}
 LL1::LL1(const initializer_list<initializer_list<Symbol>>& rules) :Parser(rules) {
+	// 消左递归,没时间了,写得比较丑陋.
+	bool should_check = false;
+	auto& real_rules = *_tmp_rules_pointer;// 实际的文法
+	do {
+		should_check = false;
+		Symbol s;
+		for (auto& rule : real_rules) {
+			if (rule.begin()->description == (rule.begin()+1)->description) {
+				s = rule[0];
+				should_check = true;
+				break;
+			}
+		}
+		if (!should_check)break;
+		// 找到所有相关的项目
+		// 形如A->Aa | b
+		vector<std::pair<vector<Symbol>::iterator, vector<Symbol>::iterator>> a_poses;
+		vector<std::pair<vector<Symbol>::iterator, vector<Symbol>::iterator>> b_poses;
+		int cnt = 0;
+		for (auto i = real_rules.begin(); i != real_rules.end(); i++) {
+			if ( i->begin()->description == s.description) {
+				// A->Aa
+				if ((i->begin()+1)->description == s.description) {
+					a_poses.emplace_back(i->begin() + 2,i->end());
+				}
+				else {
+				// A->b
+					b_poses.emplace_back(i->begin() + 1, i->end());
+				}
+			}
+			else {
+				cnt++;
+			}
+		}
+		if (a_poses.size() == 0) {
+			throw "can't resolve left recurrence";
+		}
+		Symbol new_sym(Symbol::TYPE::nonterminal, s.description + '\'');
+		vector<vector<Symbol>>tmp;
+		if (b_poses.empty()) {
+			// 插入A->epsilon
+			vector<Symbol> v{ s, make_null_symbol() };
+			tmp.push_back(v);
+		}
+		else {
+			for (auto x : b_poses) {
+				vector<Symbol> v{ s};
+				while (x.first != x.second) {
+					v.push_back(*x.first);
+					x.first++;
+				}
+				v.push_back(new_sym);
+				tmp.push_back(v);
+			}
+		}
 
+		for (auto& x : a_poses) {
+			vector<Symbol> v{ new_sym};
+			while (x.first != x.second) {
+				v.push_back(*x.first);
+				x.first++;
+			}
+			v.push_back(new_sym);
+			tmp.emplace_back(v);
+		}
+		vector<Symbol> v{ new_sym,make_null_symbol()};
+		tmp.emplace_back(v);
+		erase_if(real_rules, [=](const vector<Symbol>& v) {return v[0].description == s.description; });
+		if (s.description == rules.begin()->begin()->description) {
+			real_rules.insert(real_rules.begin(), tmp.begin(), tmp.end());
+		}
+		else {
+			real_rules.insert(real_rules.end(), tmp.begin(), tmp.end());
+		}
+	} while (should_check);
 }
 void LL1::build(){
 	Parser::build();

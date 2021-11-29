@@ -85,43 +85,105 @@ int main() {
 	//};
 
 	//LL1 ll({
-	//	{
-	//		Symbol(TYPE::nonterminal, "E"),
-	//		Symbol(TYPE::nonterminal, "A"),
-	//	},
-	//	{
-	//		Symbol(TYPE::nonterminal, "E"),
-	//		Symbol(TYPE::nonterminal, "B"),
-	//	},
-	//	{
-	//		Symbol(TYPE::nonterminal, "A"),
-	//		Symbol(TYPE::terminal, "num"),
-	//	},
-	//	{
-	//		Symbol(TYPE::nonterminal, "A"),
-	//		Symbol(TYPE::terminal, "id"),
-	//	},
-	//	{
-	//		Symbol(TYPE::nonterminal, "B"),
-	//		Symbol(TYPE::terminal, "("),
-	//		Symbol(TYPE::nonterminal, "L"),
-	//		Symbol(TYPE::terminal, ")"),
-	//	},
-	//	{
-	//		Symbol(TYPE::nonterminal, "L"),
-	//		Symbol(TYPE::nonterminal, "E"),
-	//		Symbol(TYPE::nonterminal, "L'"),
-	//	},
-	//	{
-	//		Symbol(TYPE::nonterminal, "L'"),
-	//		Symbol(TYPE::nonterminal, "E"),
-	//		Symbol(TYPE::nonterminal, "L'"),
-	//	},
-	//	{
-	//		Symbol(TYPE::nonterminal, "L'"),
-	//		Symbol(TYPE::null, "null"),
-	//	},
+	//		{
+	//			Symbol(TYPE::nonterminal, "E"),
+	//			Symbol(TYPE::nonterminal, "T"),
+	//			Symbol(TYPE::nonterminal, "E'"),
+	//		},
+	//		{
+	//			Symbol(TYPE::nonterminal, "E'"),
+	//			Symbol(TYPE::terminal, "+"),
+	//			Symbol(TYPE::nonterminal, "T"),
+	//			Symbol(TYPE::nonterminal, "E'"),
+	//		},
+	//		{
+	//			Symbol(TYPE::nonterminal, "E'"),
+	//			Symbol(TYPE::terminal, "-"),
+	//			Symbol(TYPE::nonterminal, "T"),
+	//			Symbol(TYPE::nonterminal, "E'"),
+	//		},
+	//		{
+	//			Symbol(TYPE::nonterminal, "E'"),
+	//			Symbol(TYPE::null, "null"),
+	//		},
+	//		{
+	//			Symbol(TYPE::nonterminal, "T"),
+	//			Symbol(TYPE::nonterminal, "F"),
+	//			Symbol(TYPE::nonterminal, "T'"),
+	//		},
+	//		{
+	//			Symbol(TYPE::nonterminal, "T'"),
+	//			Symbol(TYPE::terminal, "*"),
+	//			Symbol(TYPE::nonterminal, "F"),
+	//			Symbol(TYPE::nonterminal, "T'"),
+	//		},
+	//		{
+	//			Symbol(TYPE::nonterminal, "T'"),
+	//			Symbol(TYPE::terminal, "/"),
+	//			Symbol(TYPE::nonterminal, "F"),
+	//			Symbol(TYPE::nonterminal, "T'"),
+	//		},
+	//		{
+	//			Symbol(TYPE::nonterminal, "T'"),
+	//			Symbol(TYPE::null, "null"),
+	//		},
+	//		{
+	//			Symbol(TYPE::nonterminal, "F"),
+	//			Symbol(TYPE::terminal, "("),
+	//			Symbol(TYPE::nonterminal, "E"),
+	//			Symbol(TYPE::terminal, ")"),
+	//		},
+	//		{
+	//			Symbol(TYPE::nonterminal, "F"),
+	//			Symbol(TYPE::terminal, "num"),
+	//		},
 	//	});
+	LL1 ll1{
+		{
+			Symbol(TYPE::nonterminal, "E"),
+				Symbol(TYPE::nonterminal, "E"),
+				Symbol(TYPE::terminal, "+"),
+				Symbol(TYPE::nonterminal, "T"),
+		},
+			{
+				Symbol(TYPE::nonterminal, "E"),
+				Symbol(TYPE::nonterminal, "E"),
+				Symbol(TYPE::terminal, "-"),
+				Symbol(TYPE::nonterminal, "T"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "E"),
+				Symbol(TYPE::nonterminal, "T"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "T"),
+				Symbol(TYPE::nonterminal, "T"),
+				Symbol(TYPE::terminal, "*"),
+				Symbol(TYPE::nonterminal, "F"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "T"),
+				Symbol(TYPE::nonterminal, "T"),
+				Symbol(TYPE::terminal, "/"),
+				Symbol(TYPE::nonterminal, "F"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "T"),
+				Symbol(TYPE::nonterminal, "F"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "F"),
+				Symbol(TYPE::terminal, "("),
+				Symbol(TYPE::nonterminal, "E"),
+				Symbol(TYPE::terminal, ")"),
+			},
+			{
+				Symbol(TYPE::nonterminal, "F"),
+				Symbol(TYPE::terminal, "num"),
+			},
+	};
+	ll1.build();
+
 	//auto s = string2symbol("(a(b(2))(c))");
 	//s[1].description = "id";
 	//s[3].description = "id";
@@ -129,7 +191,7 @@ int main() {
 	//s[9].description = "id";
 	//ll.parse(s);
 
-	SLR1 slr1({
+	/*SLR1 slr1({
 			{
 				Symbol(TYPE::nonterminal, "E"),
 				Symbol(TYPE::nonterminal, "E"),
@@ -173,8 +235,7 @@ int main() {
 				Symbol(TYPE::terminal, "num"),
 			},
 		});
-	//lr1.build();
-	slr1.debug_parser_table();
+	slr1.debug_parser_table();*/
 	//auto s = string2symbol("((a)a(aa))");
 	//slr1.parse(s);
 }
