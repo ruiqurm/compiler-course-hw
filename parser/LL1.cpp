@@ -2,13 +2,13 @@
 #include"Symbol.h"
 #include<stack>
 #include<algorithm>
+#include<set>
+using std::set;
 using std::erase_if;
 using std::stack;
-//void LL1::pre_find_first_follow(vector<vector<Symbol>> &rules) {
 
-//}
 LL1::LL1(const initializer_list<initializer_list<Symbol>>& rules) :Parser(rules) {
-	// 消左递归,没时间了,写得比较丑陋.
+	// 消左递归,没多少时间了,写得比较丑陋.
 	bool should_check = false;
 	auto& real_rules = *_tmp_rules_pointer;// 实际的文法
 	do {
@@ -83,23 +83,29 @@ LL1::LL1(const initializer_list<initializer_list<Symbol>>& rules) :Parser(rules)
 			real_rules.insert(real_rules.end(), tmp.begin(), tmp.end());
 		}
 	} while (should_check);
+
 }
 void LL1::build(){
 	Parser::build();
 	for (auto& rule : _rules) {
+		// 对于文法A->α
 		auto alpha = rule.to()[0];
 		auto from = rule.from();
 		auto has_null = false;
+		// 遍历α的first集
 		for (auto& sym_advanced_alpha : _first[alpha]) {
 			if (sym_advanced_alpha->is_null()) {
 				has_null = true;
 				continue;
 			}
+			// 在分析表M[A,alpha]插入
 			if (sym_advanced_alpha->is_terminal()) {
 				_table[from].insert(std::pair<Symbol*, Rule&>(sym_advanced_alpha, rule));
 			}
 		}
+		// 如果first集中符号致空
 		if (has_null) {
+			// 遍历A的follow集，在分析表M[A,a_follow]中插入
 			for (auto sym_followed_from : _follow[from]) {
 				_table[from].insert(std::pair<Symbol*, Rule&>(sym_followed_from, rule));
 			}
@@ -112,10 +118,15 @@ bool LL1::_parse(vector<Symbol>& input){
 	auto ip = input.begin();
 	do {
 		auto top = s.top();
+		// 如果栈顶是非终结符或者结束符
 		if (top->is_eof() || top->is_terminal()) {
+			// 如果输入符号和栈顶符号相同
 			if (*top == *ip) {
+				// 出栈，输入指针前移
+				cout << "match " << ip->description << endl;
 				s.pop();
 				ip++;
+
 			}
 			else {
 				cout << "runtime error";
@@ -123,20 +134,62 @@ bool LL1::_parse(vector<Symbol>& input){
 			}
 		}
 		else{
+			// 找到分析表中此时对应的文法r2
 			auto r1 = _table.find(s.top());
 			if (r1 != _table.end()) {
-				auto r2 = r1->second.find(&(*ip));
+				auto r2 = (ip != input.end())?r1->second.find(&(*ip)): r1->second.find(_dollar_symbol);
 				if (r2 != r1->second.end()) {
+					// 出栈，将栈顶符号替换为文法对应的符号。注意此时逆序插入
+					cout << "pop " << top->description << ",insert";
+					cout << r2->second.from()->description << " --> ";
+					for (auto& sym : r2->second.to()) {
+						cout << sym->description;
+					}
+					cout << endl;
 					s.pop();
 					auto r = r2->second.to();
 					for (auto it = r.rbegin(); it != r.rend(); ++it) {
-						s.push(*it);
+						if( !(*it)->is_null())
+							s.push(*it);
 					}
 				}
 			}
 
 		}
-	} while (s.top()->is_eof());
+	} while (!s.empty());
 	return true;
 }
 
+
+void LL1::debug_parser_table() {
+	Parser::debug_parser_table();
+	cout << "LL1:\t";
+	for (auto& ter_sym : _valid_terminal) {
+		if (ter_sym.second->is_null())continue;
+		cout << ter_sym.second->description << "\t";
+	}
+	cout << endl;
+	for (auto& noter_sym : _valid_nonterminal) {
+		cout << noter_sym.second->description << "\t";
+		auto outer = _table.find(noter_sym.second);
+		if (outer == _table.end()) {
+			cout << endl;
+			continue;
+		}
+		for (auto& ter_sym : _valid_terminal) {
+			if (ter_sym.second->is_null())continue;
+			if (auto rule = outer->second.find(ter_sym.second); rule != outer->second.end()) {
+				auto& r = rule->second;
+				cout << r.from()->description << "->";
+				for (auto& x : r.to()) {
+					cout << x->description;
+				}
+				cout << "\t";
+			}
+			else {
+				cout << "\t";
+			}
+		}
+		cout << endl;
+	}
+}
