@@ -10,6 +10,7 @@ public:
 	LL1(const initializer_list<initializer_list<Symbol>>& rules);
 	friend std::ostream& operator<<(std::ostream& os, LL1& r);
 	void build() override;
+	void debug_parser_table() override;
 private:
 	bool _parse(vector<Symbol>&)override;
 	// table前面保存的是非终结符，后面的维度保存的是终结符

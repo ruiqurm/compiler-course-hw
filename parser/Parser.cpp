@@ -165,7 +165,7 @@ void Parser::copy_and_tag_symbol(vector<vector<Symbol>>& rules) {
 			check.insert(b.description);
 		}
 	}
-	all_symbols.reserve(check.size() + 10);
+	//all_symbols.reserve(check.size() + 10);
 	for (auto rule : rules) {
 
 		// 插入表达式左边的值
@@ -214,7 +214,7 @@ void Parser::copy_and_tag_symbol(vector<vector<Symbol>>& rules) {
 	_dollar_symbol = &all_symbols.back();
 	_valid_terminal[_dollar_symbol->description]= _dollar_symbol;
 
-	_start_symbol = &all_symbols[0];
+	_start_symbol = &all_symbols.front();
 	_max_id = id;
 
 	find_conduce_to_null();

@@ -12,7 +12,7 @@ using std::visit;
 using std::deque;
 using std::list;
 using std::make_tuple;
-auto SLR1_Item_less = [](const Item& lhs, const Item& rhs) {
+auto SLR1_Item_less = [](const SLRItem& lhs, const SLRItem& rhs) {
 	return *get<1>(lhs) < *get<1>(rhs) || (*get<1>(lhs) == *get<1>(rhs) && get<0>(lhs) < get<0>(rhs));
 };
 
@@ -39,14 +39,14 @@ SLR1::SLR1(const initializer_list<initializer_list<Symbol>>& rrr) :Parser(rrr) {
 
 void SLR1::build() {
 	Parser::build();
-	using itemset_pointer = ItemSet*;
-	using tmp_vec_pointer = vector<Item>::iterator;
+	using itemset_pointer = SLRItemSet*;
+	using tmp_vec_pointer = vector<SLRItem>::iterator;
 	
 	auto itemsets_id = 0;
-	deque<ItemSet> itemsets;	 // 保存实体项目集
+	deque<SLRItemSet> itemsets;	 // 保存实体项目集
 	std::queue<itemset_pointer>q; // BFS遍历所有可能的项目集
-	vector<Item> tmp{ Item(0, &_rules[0]) };// 暂时存放新的核
-	std::map<vector<Item>, itemset_pointer> kernel;// 所有核的集合。防止重复加入
+	vector<SLRItem> tmp{ SLRItem(0, &_rules[0]) };// 暂时存放新的核
+	std::map<vector<SLRItem>, itemset_pointer> kernel;// 所有核的集合。防止重复加入
 
 	// 初始核
 	kernel.emplace(tmp, nullptr);
@@ -64,7 +64,7 @@ void SLR1::build() {
 			// 替换tmp表内容，等下用来初始化itemset
 			tmp.clear();
 			for (auto &v : value) {
-				tmp.push_back(Item(get<0>(v) + 1, get<1>(v)));
+				tmp.push_back(SLRItem(get<0>(v) + 1, get<1>(v)));
 			}
 
 			// 如果 核kernel 和之前的是一样的，说明重复了不需要再加入队列。
@@ -139,6 +139,7 @@ void SLR1::build() {
 				_goto[ref.set_id][p] = ref.goto_func[p]->set_id;
 			}
 		}
+		// 如果是规约项目
 		for (auto& reduce_ref : ref.reduce_items) {
 			auto rule = get<1>(reduce_ref);
 			for(auto &follow_x:_follow[rule->from()]){
@@ -184,6 +185,25 @@ void SLR1::debug_parser_table() {
 		}
 		cout<<endl;
 	}
+	cout << "goto:" << endl;
+	cout << "\t";
+	for (auto& [key, value] : _valid_nonterminal) {
+		cout << value->description << "\t";
+	}
+	cout << endl;
+
+	for (unsigned i = 0; i < _max_state; i++) {
+		cout << i << "\t";
+		for (auto& [key, value] : _valid_nonterminal) {
+			if (auto find_p = _goto[i].find(value); find_p != _goto[i].end()) {
+				cout << find_p->second << '\t';
+			}
+			else {
+				cout << "\t";
+			}
+		}
+		cout << endl;
+	}
 }
 
 bool SLR1::parse(vector<Symbol>& str) {
@@ -208,7 +228,7 @@ bool SLR1::parse(vector<Symbol>& str) {
 					iter++;
 					s.emplace(i, sym);//新状态和符号入栈
 					// 输出移进项
-					cout << "Shift " << i<<" "<<sym->description << endl;
+					cout << "Shift to " << i<<"; "<<sym->description << endl;
 				},
 				// 如果是规约
 				[&](Rule* r) {
@@ -243,11 +263,11 @@ bool SLR1::parse(vector<Symbol>& str) {
 
 
 
-ItemSet::ItemSet(int id, const vector<tuple<int, Rule*>>&now_rules,  vector<Rule>& all_rules):
+SLRItemSet::SLRItemSet(int id, const vector<tuple<int, Rule*>>&now_rules,  vector<Rule>& all_rules):
 	set_id(id)
 {
-	std::queue<Item>q;// BFS 队列
-	set <Item, decltype(SLR1_Item_less)> all_items(SLR1_Item_less);
+	std::queue<SLRItem>q;// BFS 队列
+	set <SLRItem, decltype(SLR1_Item_less)> all_items(SLR1_Item_less);
 	for (auto& v : now_rules) { 
 		q.push(v);
 		all_items.insert(v);
@@ -272,7 +292,7 @@ ItemSet::ItemSet(int id, const vector<tuple<int, Rule*>>&now_rules,  vector<Rule
 					if (*rule.from() == this_sym) {
 						// 如果出现重复，不插入
 						auto old_size = all_items.size();
-						auto new_tuple = Item(0, &rule);
+						auto new_tuple = SLRItem(0, &rule);
 						all_items.insert(new_tuple);
 						if (old_size != all_items.size() && !rule.to()[0]->is_null()) {
 							q.emplace(new_tuple);

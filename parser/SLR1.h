@@ -13,23 +13,23 @@ using std::tuple;
 using std::variant;
 
 
-using Item = tuple<int, Rule*>;
+using SLRItem = tuple<int, Rule*>;
 
-struct ItemSet {
+struct SLRItemSet {
     /*
     * 项目集
     * */
 
 public:
-    ItemSet(int id, const vector<Item>&, vector<Rule>&);
+    SLRItemSet(int id, const vector<SLRItem>&, vector<Rule>&);
 
     // 状态id
     int set_id;
     int item_count{ 0 };
     // 项目集中的项目
-    map<Symbol*, vector<Item>, symbol_ptr_less> shift_items;// 移进
-    vector<Item> reduce_items;// 规约
-    map<Symbol*, ItemSet*> goto_func; // goto函数，仅用于debug
+    map<Symbol*, vector<SLRItem>, symbol_ptr_less> shift_items;// 移进
+    vector<SLRItem> reduce_items;// 规约
+    map<Symbol*, SLRItemSet*> goto_func; // goto函数，仅用于debug
 
 
 };

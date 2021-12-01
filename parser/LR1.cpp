@@ -1,18 +1,20 @@
 #include "LR1.h"
 #include<queue>
 #include<deque>
+#include<stack>
+using std::stack;
 using std::deque;
-auto LR1_Item_less = [](const Item& lhs, const Item& rhs) {
+auto LR1_Item_less = [](const LR1Item& lhs, const LR1Item& rhs) {
 	return *get<1>(lhs) < *get<1>(rhs) || (*get<1>(lhs) == *get<1>(rhs) && get<0>(lhs) < get<0>(rhs)) ||
 		*get<1>(lhs) == *get<1>(rhs) && get<0>(lhs) == get<0>(rhs) && get<2>(lhs)->id < get<2>(rhs)->id;
 };
 
-ItemSet::ItemSet(int id, const vector<Item>& now_rules, vector<Rule>& all_rules,
+LR1ItemSet::LR1ItemSet(int id, const vector<LR1Item>& now_rules, vector<Rule>& all_rules,
 	Parser::symbol_lookup_set_t& first) :
 	set_id(id)
 {
-	std::queue<Item>q;// BFS 队列
-	set <Item, decltype(LR1_Item_less)> all_items(LR1_Item_less);
+	std::queue<LR1Item>q;// BFS 队列
+	set <LR1Item, decltype(LR1_Item_less)> all_items(LR1_Item_less);
 	for (auto& v : now_rules) {
 		q.push(v);
 		all_items.insert(v);
@@ -38,7 +40,7 @@ ItemSet::ItemSet(int id, const vector<Item>& now_rules, vector<Rule>& all_rules,
 						// 如果出现重复，不插入
 						auto old_size = all_items.size();
 						if (rule->to().size() <= dot + 1) {
-							auto new_tuple = Item(0, &r, psymbol);
+							auto new_tuple = LR1Item(0, &r, psymbol);
 							all_items.insert(new_tuple);
 							if (old_size != all_items.size() && !r.to()[0]->is_null()) {
 								q.emplace(new_tuple);
@@ -49,7 +51,7 @@ ItemSet::ItemSet(int id, const vector<Item>& now_rules, vector<Rule>& all_rules,
 							for (auto sym : first[beta]) {
 								if (!sym->is_null()) {
 									// 否则加入beta，即当前非终结符的follow集
-									auto new_tuple = Item(0, &r, sym);
+									auto new_tuple = LR1Item(0, &r, sym);
 									all_items.insert(new_tuple);
 									if (old_size != all_items.size()) {
 										q.emplace(new_tuple);
@@ -57,7 +59,7 @@ ItemSet::ItemSet(int id, const vector<Item>& now_rules, vector<Rule>& all_rules,
 								}
 								else {
 									// 如果致空，加入原来的符号
-									auto new_tuple = Item(0, &r, psymbol);
+									auto new_tuple = LR1Item(0, &r, psymbol);
 									all_items.insert(new_tuple);
 									if (old_size != all_items.size()) {
 										q.emplace(new_tuple);
@@ -105,14 +107,14 @@ LR1::LR1(const initializer_list<initializer_list<Symbol>>& rrr) :Parser(rrr) {
 
 void LR1::build() {
 	Parser::build();
-	using itemset_pointer = ItemSet*;
-	using tmp_vec_pointer = vector<Item>::iterator;
+	using itemset_pointer = LR1ItemSet*;
+	using tmp_vec_pointer = vector<LR1Item>::iterator;
 
 	auto itemsets_id = 0;
-	deque<ItemSet> itemsets;	 // 保存实体项目集
+	deque<LR1ItemSet> itemsets;	 // 保存实体项目集
 	std::queue<itemset_pointer>q; // BFS遍历所有可能的项目集
-	vector<Item> tmp{ Item(0, &_rules[0],_dollar_symbol)};// 暂时存放新的核
-	std::map<vector<Item>, itemset_pointer> kernel;// 所有核的集合。防止重复加入
+	vector<LR1Item> tmp{ LR1Item(0, &_rules[0],_dollar_symbol)};// 暂时存放新的核
+	std::map<vector<LR1Item>, itemset_pointer> kernel;// 所有核的集合。防止重复加入
 
 	// 初始核
 	kernel.emplace(tmp, nullptr);
@@ -130,7 +132,7 @@ void LR1::build() {
 			// 替换tmp表内容，等下用来初始化itemset
 			tmp.clear();
 			for (auto& v : value) {
-				tmp.push_back(Item(get<0>(v) + 1, get<1>(v),get<2>(v)));
+				tmp.push_back(LR1Item(get<0>(v) + 1, get<1>(v),get<2>(v)));
 			}
 
 			// 如果 核kernel 和之前的是一样的，说明重复了不需要再加入队列。
@@ -252,4 +254,78 @@ void LR1::debug_parser_table() {
 		}
 		cout << endl;
 	}
+	cout << "goto:" << endl;
+	cout << "\t";
+	for (auto& [key, value] : _valid_nonterminal) {
+		cout << value->description << "\t";
+	}
+	cout << endl;
+
+	for (unsigned i = 0; i < _max_state; i++) {
+		cout << i << "\t";
+		for (auto& [key, value] : _valid_nonterminal) {
+			if (auto find_p = _goto[i].find(value); find_p != _goto[i].end()) {
+				cout << find_p->second << '\t';
+			}
+			else {
+				cout << "\t";
+			}
+		}
+		cout << endl;
+	}
+}
+
+bool LR1::parse(vector<Symbol>& str)
+{
+	stack < std::tuple <int, Symbol*>> s;//符号状态栈
+	s.emplace(0, _dollar_symbol);
+	auto iter = str.begin();
+	auto flag = true;
+	while (flag) {
+		auto [state, sign] = s.top();
+		// 找到对应的symbol。这里由于前期实现问题，必须要找到相应的内部指针
+		Symbol* sym = relocate_symbol(iter, str);
+		if (sym == nullptr) {
+			cout << "unknow symbol: " << iter->description << endl;
+			return false;
+		}
+
+		// 如果找到有效条目
+		if (auto p = _action[state].find(sym); p != _action[state].end()) {
+			std::visit(overloaded{
+				// 如果是移进
+				[&](int i) {
+					iter++;
+					s.emplace(i, sym);//新状态和符号入栈
+					// 输出移进项
+					cout << "Shift to " << i << "; " << sym->description << endl;
+				},
+				// 如果是规约
+				[&](Rule* r) {
+					for (auto i = 0; i < r->to().size(); i++)s.pop();//移出size个符号
+					// 输出规约法则：
+					cout << "Reduce by " << r->from()->description << "->";
+					for (auto sym : r->to()) {
+						cout << sym->description;
+					}
+					cout << endl;
+					if (r->id() != 0) {
+						auto [state, sign] = s.top();
+						s.emplace(_goto[state][r->from()], r->from());
+					}
+					else {
+						// 如果是最终规约
+						flag = false;
+					}
+				}
+				}, p->second);
+		}
+		else {
+			// 否则
+			cout << "stop at state:" << state << " sym:" << sym->description;
+			return false;
+		}
+
+	}
+	return true;
 }
